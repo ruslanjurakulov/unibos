@@ -145,6 +145,10 @@
   transition: background 160ms ease;
 }
 
+:global(.p3-site) .module {
+  color: var(--p3-forest);
+}
+
 .module:hover {
   background: #efeee5;
 }
@@ -176,6 +180,10 @@
   color: var(--p3-muted);
   font-size: 10px;
   line-height: 1.6;
+}
+
+:global(.p3-site) .module p {
+  color: var(--p3-muted);
 }
 
 .moduleArrow {
@@ -519,6 +527,14 @@
 :global(.p3-dark) .traction,
 :global(.p3-dark) .audiences article {
   background: #19251e;
+}
+
+:global(.p3-dark) .module {
+  color: #edf1e9;
+}
+
+:global(.p3-dark) .module p {
+  color: #bec8be;
 }
 
 :global(.p3-dark) .demoCard,
