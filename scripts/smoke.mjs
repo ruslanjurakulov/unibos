@@ -104,8 +104,12 @@ try {
   assert.equal((await get(`${websiteUrl}/.env`)).status, 404);
   for (const route of [
     "/solutions",
+    "/demo",
     "/pricing",
     "/about",
+    "/security",
+    "/investors",
+    "/faq",
     "/contact",
     "/demo/guest",
     "/demo/dashboard",

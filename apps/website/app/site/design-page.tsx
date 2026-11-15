@@ -33,7 +33,7 @@ const labels = {
     login: "Kirish",
     cta: "Demo ko‘rish",
     homeEyebrow: "RESTORANLAR UCHUN YAGONA RAQAMLI PLATFORMА",
-    homeTitle: "Bitta platforma. Butun biznesingiz.",
+    homeTitle: "Restoran biznesi uchun yagona raqamli platforma",
     homeLead:
       "Restoran va kafelar uchun ishlab chiqilayotgan biznes operatsion tizimi. Birinchi yo‘nalish — restoranlar; bu saytdagi imkoniyatlar demo yoki reja sifatida belgilanadi.",
     homePoints: [
@@ -128,7 +128,7 @@ const labels = {
     login: "Sign in",
     cta: "View demo",
     homeEyebrow: "ONE DIGITAL PLATFORM FOR RESTAURANTS",
-    homeTitle: "One platform. Your entire business.",
+    homeTitle: "One digital platform for restaurant businesses.",
     homeLead:
       "A business operating system in development for restaurants and cafés. Restaurants come first; capabilities on this site are marked as demos or plans.",
     homePoints: [
@@ -220,7 +220,7 @@ const labels = {
     login: "Войти",
     cta: "Смотреть демо",
     homeEyebrow: "ЕДИНАЯ ЦИФРОВАЯ ПЛАТФОРМА ДЛЯ РЕСТОРАНОВ",
-    homeTitle: "Одна платформа. Весь ваш бизнес.",
+    homeTitle: "Единая цифровая платформа для ресторанного бизнеса.",
     homeLead:
       "Бизнес-операционная система для ресторанов и кафе в разработке. Сначала рестораны; возможности на сайте отмечены как демо или планируемые.",
     homePoints: [
