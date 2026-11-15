@@ -1,0 +1,2 @@
+# Repository security gates
+Private visibility mandatory. Owner enables MFA, reviews collaborators and installed apps, disables public Pages, applies main branch rules (PR review, required CI, no force push/deletion), restricts Actions tokens to read-only by default; no secrets in code or logs. Verify availability of rules by plan. These settings require owner verification and are not asserted enabled. No production deployment without explicit approval.
