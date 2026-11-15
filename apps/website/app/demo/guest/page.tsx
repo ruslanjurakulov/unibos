@@ -219,70 +219,74 @@ export default function GuestDemoPage() {
       </header>
       <div className="guest-layout">
         <div className="guest-hero" role="img" aria-label={t.decorative} />
-        <div className="guest-info">
-          <small>{t.restaurant}</small>
-          <h1>{t.menu}</h1>
-          <p>{t.subtitle}</p>
-        </div>
-        <div
-          className="guest-categories"
-          aria-label={
-            locale === "uz"
-              ? "Menyu kategoriyalari"
-              : locale === "ru"
-                ? "Категории меню"
-                : "Menu categories"
-          }
-        >
-          {(["All", "Fresh", "Mains"] as const).map((value) => (
-            <button
-              className={category === value ? "selected" : ""}
-              onClick={() => setCategory(value)}
-              key={value}
-              aria-pressed={category === value}
-            >
-              {t.categories[value]}
-            </button>
-          ))}
-        </div>
-        {shown.map((product) => {
-          const index = products.findIndex(
-            (candidate) => candidate.id === product.id,
-          );
-          return (
-            <article className="guest-item" key={product.id}>
-              <div className="guest-item-image" aria-hidden="true" />
-              <div className="guest-item-info">
-                <b>{t.names[index]}</b>
-                <small>{t.details[index]}</small>
-                <strong>${product.price.toFixed(2)}</strong>
-              </div>
-              <button
-                aria-label={`${t.add}: ${t.names[index]}`}
-                onClick={() => {
-                  setCart((current) => ({
-                    ...current,
-                    [product.id]: (current[product.id] ?? 0) + 1,
-                  }));
-                  setNotice(`${t.names[index]} ${t.added}`);
-                }}
-              >
-                +
-              </button>
-            </article>
-          );
-        })}
-        {notice && (
-          <div role="status" className="toast">
-            {notice}. {t.noOrder}
+        <div className="guest-menu">
+          <div className="guest-info">
+            <small>{t.restaurant}</small>
+            <h1>{t.menu}</h1>
+            <p>{t.subtitle}</p>
           </div>
-        )}
-        <div className="guest-cart">
-          <span>
-            {t.cart} · {count} {count === 1 ? t.item : t.items} · $
-            {total.toFixed(2)}
-          </span>
-          <button onClick={() => setNotice(t.unavailable)}>{t.preview}</button>
+          <div
+            className="guest-categories"
+            aria-label={
+              locale === "uz"
+                ? "Menyu kategoriyalari"
+                : locale === "ru"
+                  ? "Категории меню"
+                  : "Menu categories"
+            }
+          >
+            {(["All", "Fresh", "Mains"] as const).map((value) => (
+              <button
+                className={category === value ? "selected" : ""}
+                onClick={() => setCategory(value)}
+                key={value}
+                aria-pressed={category === value}
+              >
+                {t.categories[value]}
+              </button>
+            ))}
+          </div>
+          {shown.map((product) => {
+            const index = products.findIndex(
+              (candidate) => candidate.id === product.id,
+            );
+            return (
+              <article className="guest-item" key={product.id}>
+                <div className="guest-item-image" aria-hidden="true" />
+                <div className="guest-item-info">
+                  <b>{t.names[index]}</b>
+                  <small>{t.details[index]}</small>
+                  <strong>${product.price.toFixed(2)}</strong>
+                </div>
+                <button
+                  aria-label={`${t.add}: ${t.names[index]}`}
+                  onClick={() => {
+                    setCart((current) => ({
+                      ...current,
+                      [product.id]: (current[product.id] ?? 0) + 1,
+                    }));
+                    setNotice(`${t.names[index]} ${t.added}`);
+                  }}
+                >
+                  +
+                </button>
+              </article>
+            );
+          })}
+          {notice && (
+            <div role="status" className="toast">
+              {notice}. {t.noOrder}
+            </div>
+          )}
+          <div className="guest-cart">
+            <span>
+              {t.cart} · {count} {count === 1 ? t.item : t.items} · $
+              {total.toFixed(2)}
+            </span>
+            <button onClick={() => setNotice(t.unavailable)}>
+              {t.preview}
+            </button>
+          </div>
         </div>
       </div>
     </main>

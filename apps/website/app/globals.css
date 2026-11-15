@@ -3175,13 +3175,27 @@ button:focus-visible {
 }
 
 .p3-dark {
-  --p3-ivory: #131d18;
   --p3-paper: #19251e;
   --p3-ink: #edf1e9;
   --p3-muted: #bec8be;
   --p3-line: #35473a;
   background: #131d18;
   color: #e9eee6;
+}
+.p3-dark .p3-hero-copy h1,
+.p3-dark .p3-subhero h1,
+.p3-dark .p3-about-hero h1,
+.p3-dark .p3-contact-copy h1,
+.p3-dark .p3-pricing-intro h1,
+.p3-dark .p3-section-heading h2,
+.p3-dark .p3-home-end h2,
+.p3-dark .p3-values-grid h2 {
+  color: #edf1e9;
+}
+.p3-dark .p3-module-icon,
+.p3-dark .p3-module-arrow {
+  color: #dce6dc;
+  border-color: #687a6b;
 }
 .p3-dark .p3-header {
   background: #0a251e;
@@ -3683,8 +3697,6 @@ button:focus-visible {
   margin: 34px auto 55px;
   display: grid;
   grid-template-columns: 0.93fr 1.07fr;
-  grid-template-rows: auto auto repeat(3, auto) auto;
-  align-items: start;
   border: 1px solid #e5e0d3;
   border-radius: 10px;
   background: #fffdf8;
@@ -3692,11 +3704,20 @@ button:focus-visible {
 }
 .guest-page .guest-hero {
   grid-column: 1;
-  grid-row: 1 / 5;
-  height: 100%;
   min-height: 600px;
-  background: #172f27 url("/images/p3/qr-menu-demo-v2.jpg") center / cover
+  height: 100%;
+  align-self: stretch;
+  position: relative;
+  background: #172f27 url("/images/p3/qr-menu-demo-v2.jpg") center top / contain
     no-repeat;
+}
+.guest-page .guest-menu {
+  grid-column: 2;
+  min-height: 600px;
+  padding: 20px 26px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 .guest-page .guest-hero:after {
   content: "QR / NFC · DEMO";
@@ -3708,9 +3729,7 @@ button:focus-visible {
   border-radius: 99px;
 }
 .guest-page .guest-info {
-  grid-column: 2;
-  grid-row: 1;
-  padding: 23px 26px 8px;
+  padding: 3px 0 0;
 }
 .guest-page .guest-info small {
   color: #8e7544;
@@ -3725,9 +3744,7 @@ button:focus-visible {
   font-size: 11px;
 }
 .guest-page .guest-categories {
-  grid-column: 2;
-  grid-row: 2;
-  padding: 12px 26px;
+  padding: 0 0 2px;
 }
 .guest-page .guest-categories button {
   color: #43564a;
@@ -3739,9 +3756,8 @@ button:focus-visible {
   background: #0f3d32;
 }
 .guest-page .guest-item {
-  grid-column: 2;
-  margin-inline: 26px;
-  padding: 11px;
+  margin: 0;
+  padding: 8px;
   border-color: #ecebe4;
   background: #fff;
 }
@@ -3763,12 +3779,11 @@ button:focus-visible {
   background: #f7f4ec;
 }
 .guest-page .guest-cart {
-  grid-column: 2;
-  position: relative;
+  position: static;
   bottom: auto;
   left: auto;
   width: auto;
-  margin: 8px 26px 22px;
+  margin: auto 0 0;
   border-radius: 4px;
   background: #0f3d32;
   box-shadow: 0 8px 23px #0f3d3226;
@@ -3778,8 +3793,7 @@ button:focus-visible {
   background: #c9ae78;
 }
 .guest-page .toast {
-  grid-column: 2;
-  margin: 0 26px 10px;
+  margin: 0;
 }
 .guest-page.theme-dark {
   background: #121b17;
@@ -3833,28 +3847,21 @@ button:focus-visible {
     height: auto;
     aspect-ratio: 1.48;
   }
-  .guest-page .guest-info,
-  .guest-page .guest-categories,
-  .guest-page .guest-item,
-  .guest-page .guest-cart,
-  .guest-page .toast {
+  .guest-page .guest-menu {
     grid-column: 1;
-    grid-row: auto;
+    min-height: 0;
+    padding: 18px;
+    gap: 12px;
   }
-  .guest-page .guest-info {
-    padding-inline: 18px;
+  .guest-page .guest-info,
+  .guest-page .guest-categories {
+    padding-inline: 0;
   }
   .guest-page .guest-info h1 {
     font-size: 28px;
   }
-  .guest-page .guest-categories {
-    padding-inline: 18px;
-  }
-  .guest-page .guest-item {
-    margin-inline: 18px;
-  }
   .guest-page .guest-cart {
-    margin-inline: 18px;
+    margin-top: 8px;
   }
 }
 
@@ -3914,6 +3921,9 @@ button:focus-visible {
 }
 .p3-corp-dark .p3-donut::after {
   background: #18231e;
+}
+.p3-corp-dark .p3-order-panel li:nth-child(1) span {
+  color: #a4cfb3;
 }
 .p3-admin-empty {
   margin: 0;
