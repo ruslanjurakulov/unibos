@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 
-type Phase = "credentials" | "totp" | "setup" | "verify-setup" | "backup";
+type Phase =
+  "credentials" | "totp" | "step-up" | "setup" | "verify-setup" | "backup";
 type AuthResponse = {
   twoFactorRedirect?: unknown;
   totpURI?: unknown;
@@ -98,7 +99,7 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
           if (user.mfaVerified) router.push("/dashboard");
           else setPhase("setup");
         }
-      } else if (phase === "totp") {
+      } else if (phase === "totp" || phase === "step-up") {
         const result = await post(
           useBackupCode
             ? "/api/auth/two-factor/verify-backup-code"
@@ -152,17 +153,19 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
   }
 
   const heading =
-    phase === "totp"
-      ? "Verify your sign-in"
-      : phase === "setup"
-        ? "Protect your account"
-        : phase === "verify-setup"
-          ? "Confirm your authenticator"
-          : phase === "backup"
-            ? "Save your recovery codes"
-            : mode === "sign-up"
-              ? "Create your account"
-              : "Welcome back";
+    phase === "step-up"
+      ? "Verify your account"
+      : phase === "totp"
+        ? "Verify your sign-in"
+        : phase === "setup"
+          ? "Protect your account"
+          : phase === "verify-setup"
+            ? "Confirm your authenticator"
+            : phase === "backup"
+              ? "Save your recovery codes"
+              : mode === "sign-up"
+                ? "Create your account"
+                : "Welcome back";
   return (
     <main className="auth-page">
       <header className="auth-nav">
@@ -227,6 +230,29 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
           </div>
         ) : (
           <form className="auth-form" onSubmit={onSubmit}>
+            {phase === "setup" && (
+              <div className="auth-instructions">
+                <p>
+                  Already set up two-factor authentication? Verify your existing
+                  authenticator or a recovery code to renew access. Otherwise,
+                  enter your password below to set up an authenticator.
+                </p>
+                <button
+                  type="button"
+                  className="auth-alternate"
+                  disabled={busy}
+                  onClick={() => {
+                    setPhase("step-up");
+                    setUseBackupCode(false);
+                    setCode("");
+                    setPassword("");
+                    setError("");
+                  }}
+                >
+                  Verify an existing authenticator or recovery code
+                </button>
+              </div>
+            )}
             {phase === "credentials" && mode === "sign-up" && (
               <label>
                 Full name
@@ -286,9 +312,11 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
                 <small>Use at least 12 characters.</small>
               </label>
             )}
-            {(phase === "totp" || phase === "verify-setup") && (
+            {(phase === "totp" ||
+              phase === "step-up" ||
+              phase === "verify-setup") && (
               <label>
-                {phase === "totp" && useBackupCode
+                {(phase === "totp" || phase === "step-up") && useBackupCode
                   ? "Recovery code"
                   : "Authenticator code"}
                 <input
@@ -324,10 +352,11 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
                 {error}
               </p>
             )}
-            {phase === "totp" && (
+            {(phase === "totp" || phase === "step-up") && (
               <button
                 type="button"
                 className="auth-alternate"
+                disabled={busy}
                 onClick={() => {
                   setUseBackupCode((value) => !value);
                   setCode("");
@@ -337,6 +366,21 @@ export function AuthPanel({ mode }: { mode: "sign-in" | "sign-up" }) {
                 {useBackupCode
                   ? "Use an authenticator code"
                   : "Use a recovery code instead"}
+              </button>
+            )}
+            {phase === "step-up" && (
+              <button
+                type="button"
+                className="auth-alternate"
+                disabled={busy}
+                onClick={() => {
+                  setPhase("setup");
+                  setUseBackupCode(false);
+                  setCode("");
+                  setError("");
+                }}
+              >
+                Back to authenticator setup
               </button>
             )}
             <button className="ui-button auth-submit" disabled={busy}>

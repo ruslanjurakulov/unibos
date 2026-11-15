@@ -48,3 +48,11 @@ Every demonstration uses clearly marked fictional data and must not send an orde
 ## Accessibility and privacy boundary
 
 The current website sends no analytics or marketing data and loads no remote fonts, images or scripts. Self-hosted type and same-origin API proxy routes respect the CSP's `font-src 'self'` and `connect-src 'self'` boundaries. The sign-in proxy requires `UNIBOS_API_ORIGIN`; local development defaults to the API on loopback port 3001. Production hosting, HTTPS configuration, email verification/delivery, legal review, accessibility audit and browser/device verification remain release gates.
+
+## P3 completion surfaces
+
+- `/demo` is the entry point to the existing guest, restaurant dashboard and Super Admin previews. It does not create accounts, send orders or payments, or duplicate demo logic.
+- `/security` distinguishes controls implemented and locally tested in P2 from production hosting, recovery, monitoring and legal gates that remain outstanding. Do not imply certification or that the Vercel preview is connected to the authentication API.
+- `/investors` describes the restaurant-first product direction, subscription hypothesis and future validation measures without fabricated traction or financial data. `/faq` states demo behavior, device/NFC boundaries, pricing status and product availability.
+- Homepage and solutions module cards use explicit status labels for interactive demos, API foundations, visual samples and planned modules. Do not describe a planned module as live.
+- `/contact` is a visual preview without editable text inputs or a form. It collects, sends and stores no lead information until an approved backend and verified contact destination exist.

@@ -1,0 +1,716 @@
+.page {
+  padding-block: 76px 104px;
+}
+
+.pageHeader {
+  max-width: 900px;
+  margin-bottom: 42px;
+}
+
+.pageHeader h1,
+.workflow h2,
+.trust h2 {
+  margin: 0;
+  color: var(--p3-forest);
+  font: 500 clamp(38px, 5.2vw, 68px) / 1.08 var(--serif);
+  letter-spacing: -0.045em;
+}
+
+.pageHeader > p:last-child {
+  max-width: 760px;
+  margin: 20px 0 0;
+  color: var(--p3-muted);
+  font-size: 15px;
+  line-height: 1.8;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 16px;
+  color: #8e7544;
+  font-size: 10px;
+  line-height: 1.5;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.eyebrow::before {
+  width: 24px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+}
+
+.demoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--p3-line);
+  border: 1px solid var(--p3-line);
+}
+
+.demoCard {
+  min-height: 310px;
+  padding: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--p3-paper);
+}
+
+.demoCard > small {
+  margin-top: 16px;
+  color: var(--p3-muted);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.demoCard h2,
+.controlGrid h3,
+.investorGrid h2 {
+  margin: 10px 0 0;
+  color: var(--p3-forest);
+  font: 500 25px / 1.2 var(--serif);
+}
+
+.demoCard p,
+.controlGrid p,
+.investorGrid p {
+  margin: 12px 0 0;
+  color: var(--p3-muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+.demoCard .note {
+  margin-top: 10px;
+  color: #7b6843;
+  font-size: 10px;
+}
+
+.demoCard a,
+.primaryLink,
+.secondaryLink,
+.trust a,
+.audiences a {
+  margin-top: auto;
+  padding-top: 24px;
+  color: var(--p3-forest);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.demoCard a span,
+.primaryLink span,
+.secondaryLink span,
+.trust a span,
+.audiences a span {
+  color: #9a7b40;
+}
+
+.moduleSection {
+  margin-top: 36px;
+}
+
+.moduleDisclosure {
+  margin: 0 0 12px;
+  color: #80683d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.modules {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--p3-line);
+  border-left: 1px solid var(--p3-line);
+}
+
+.module {
+  min-height: 196px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px 20px 26px;
+  color: var(--p3-forest);
+  background: var(--p3-paper);
+  border-right: 1px solid var(--p3-line);
+  border-bottom: 1px solid var(--p3-line);
+  transition: background 160ms ease;
+}
+
+.module:hover {
+  background: #efeee5;
+}
+
+.moduleNumber {
+  color: #957c48;
+  font: 500 18px / 1 var(--serif);
+}
+
+.moduleStatus {
+  margin-top: 11px;
+  padding: 4px 7px;
+  color: #586b5f;
+  background: #e7ece5;
+  border-radius: 2px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.module b {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.module p {
+  max-width: 300px;
+  margin: 7px 0 0;
+  color: var(--p3-muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.moduleArrow {
+  position: absolute;
+  right: 16px;
+  bottom: 13px;
+  color: #9a7b40;
+  font-size: 13px;
+}
+
+.workflowOverview {
+  margin-bottom: 28px;
+}
+
+.workflowSteps {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  border-top: 1px solid var(--p3-line);
+  border-left: 1px solid var(--p3-line);
+}
+
+.workflowSteps a {
+  min-height: 140px;
+  padding: 15px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: var(--p3-paper);
+  border-right: 1px solid var(--p3-line);
+  border-bottom: 1px solid var(--p3-line);
+}
+
+.workflowSteps a > span {
+  color: #957c48;
+  font: 500 18px / 1 var(--serif);
+}
+
+.workflowSteps b {
+  margin-top: 15px;
+  color: var(--p3-forest);
+  font-size: 11px;
+}
+
+.workflowSteps small {
+  margin-top: 6px;
+  color: var(--p3-muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.workflow {
+  padding-block: 86px 94px;
+  background: #eeece2;
+}
+
+.workflow h2,
+.trust h2 {
+  max-width: 750px;
+  font-size: clamp(34px, 4vw, 52px);
+}
+
+.steps {
+  margin: 36px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-left: 1px solid #d4d1c4;
+}
+
+.steps li {
+  min-height: 165px;
+  padding: 17px 17px 12px;
+  border: 1px solid #d4d1c4;
+  border-left: 0;
+}
+
+.steps li > span {
+  color: #947b47;
+  font: 500 20px / 1 var(--serif);
+}
+
+.steps b {
+  display: block;
+  margin-top: 18px;
+  color: var(--p3-forest);
+  font-size: 12px;
+}
+
+.steps p {
+  margin: 8px 0 0;
+  color: #626e65;
+  font-size: 10px;
+  line-height: 1.65;
+}
+
+.trust {
+  padding-block: 70px;
+  color: var(--p3-ivory);
+  background: var(--p3-forest);
+}
+
+.trust > div {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 38px;
+}
+
+.trust .eyebrow {
+  color: var(--p3-gold);
+}
+
+.trust h2 {
+  max-width: 670px;
+  color: var(--p3-ivory);
+}
+
+.trust > div > div > p:last-child {
+  max-width: 680px;
+  margin: 16px 0 0;
+  color: #d6e0d7;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.trust a {
+  flex: none;
+  color: var(--p3-ivory);
+}
+
+.audiences {
+  padding-block: 74px;
+}
+
+.audiences > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border: 1px solid var(--p3-line);
+}
+
+.audiences article {
+  min-height: 180px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--p3-line);
+  background: var(--p3-paper);
+}
+
+.audiences article:last-child {
+  border-right: 0;
+}
+
+.audiences h3 {
+  margin: 0;
+  color: var(--p3-forest);
+  font: 500 22px / 1.2 var(--serif);
+}
+
+.audiences p {
+  margin: 10px 0 0;
+  color: var(--p3-muted);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.audiences a {
+  padding-top: 16px;
+}
+
+.sectionTitle {
+  margin: 40px 0 16px;
+  color: var(--p3-forest);
+  font: 500 30px / 1.2 var(--serif);
+}
+
+.controlGrid,
+.investorGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--p3-line);
+  border-left: 1px solid var(--p3-line);
+}
+
+.controlGrid article,
+.investorGrid article {
+  min-height: 192px;
+  padding: 22px;
+  background: var(--p3-paper);
+  border-right: 1px solid var(--p3-line);
+  border-bottom: 1px solid var(--p3-line);
+}
+
+.controlGrid h3 {
+  font-size: 22px;
+}
+
+.boundaries {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--p3-line);
+}
+
+.boundaries li {
+  padding: 15px 16px 15px 28px;
+  position: relative;
+  color: var(--p3-muted);
+  border-bottom: 1px solid var(--p3-line);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.boundaries li::before {
+  position: absolute;
+  left: 6px;
+  color: #9a7b40;
+  content: "—";
+}
+
+.notice,
+.traction > p {
+  margin: 24px 0;
+  padding: 15px 17px;
+  color: #625132;
+  background: #eee7d5;
+  border-left: 3px solid var(--p3-gold);
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.traction {
+  margin-top: 32px;
+  padding: 28px;
+  background: var(--p3-paper);
+  border: 1px solid var(--p3-line);
+}
+
+.traction h2 {
+  margin: 0;
+  color: var(--p3-forest);
+  font: 500 28px / 1.25 var(--serif);
+}
+
+.traction ul {
+  margin: 18px 0 0;
+  padding-left: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 30px;
+  color: var(--p3-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.traction > p {
+  margin-bottom: 0;
+}
+
+.actions {
+  margin-top: 20px;
+  display: flex;
+  gap: 18px;
+}
+
+.primaryLink,
+.secondaryLink {
+  margin: 0;
+  padding: 14px 18px;
+  background: var(--p3-gold);
+  border-radius: 3px;
+}
+
+.secondaryLink {
+  color: var(--p3-forest);
+  background: transparent;
+  border: 1px solid var(--p3-line);
+}
+
+.faqList {
+  margin-bottom: 30px;
+  border-top: 1px solid var(--p3-line);
+}
+
+.faqList details {
+  border-bottom: 1px solid var(--p3-line);
+}
+
+.faqList summary {
+  min-height: 62px;
+  padding: 16px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  color: var(--p3-forest);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  list-style: none;
+}
+
+.faqList summary::-webkit-details-marker {
+  display: none;
+}
+
+.faqList summary b {
+  color: #8f7440;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+.faqList details[open] summary b {
+  transform: rotate(45deg);
+}
+
+.faqList details p {
+  max-width: 850px;
+  margin: -4px 0 19px;
+  color: var(--p3-muted);
+  font-size: 12px;
+  line-height: 1.75;
+}
+
+:global(.p3-dark) .pageHeader h1,
+:global(.p3-dark) .sectionTitle,
+:global(.p3-dark) .demoCard h2,
+:global(.p3-dark) .controlGrid h3,
+:global(.p3-dark) .investorGrid h2,
+:global(.p3-dark) .traction h2,
+:global(.p3-dark) .audiences h3,
+:global(.p3-dark) .faqList summary {
+  color: #edf1e9;
+}
+
+:global(.p3-dark) .demoCard,
+:global(.p3-dark) .module,
+:global(.p3-dark) .controlGrid article,
+:global(.p3-dark) .investorGrid article,
+:global(.p3-dark) .traction,
+:global(.p3-dark) .audiences article {
+  background: #19251e;
+}
+
+:global(.p3-dark) .demoCard,
+:global(.p3-dark) .module,
+:global(.p3-dark) .controlGrid article,
+:global(.p3-dark) .investorGrid article,
+:global(.p3-dark) .traction,
+:global(.p3-dark) .audiences > div {
+  border-color: #35473a;
+}
+
+:global(.p3-dark) .moduleSection .moduleDisclosure,
+:global(.p3-dark) .moduleStatus,
+:global(.p3-dark) .demoCard .note,
+:global(.p3-dark) .notice,
+:global(.p3-dark) .traction > p {
+  color: #e5d4a6;
+}
+
+:global(.p3-dark) .moduleStatus {
+  background: #2a3a2f;
+}
+
+:global(.p3-dark) .workflow {
+  background: #19251e;
+}
+
+:global(.p3-dark) .steps li {
+  border-color: #35473a;
+}
+
+:global(.p3-dark) .workflowSteps a {
+  background: #19251e;
+  border-color: #35473a;
+}
+
+:global(.p3-dark) .workflowSteps b {
+  color: #edf1e9;
+}
+
+:global(.p3-dark) .steps b,
+:global(.p3-dark) .trust h2,
+:global(.p3-dark) .audiences h3 {
+  color: #edf1e9;
+}
+
+:global(.p3-dark) .steps p,
+:global(.p3-dark) .boundaries li,
+:global(.p3-dark) .faqList details p {
+  color: #bec8be;
+}
+
+:global(.p3-dark) .boundaries,
+:global(.p3-dark) .faqList,
+:global(.p3-dark) .faqList details,
+:global(.p3-dark) .faqList summary {
+  border-color: #35473a;
+}
+
+:global(.p3-dark) .notice,
+:global(.p3-dark) .traction > p {
+  background: #302b1e;
+}
+
+@media (max-width: 900px) {
+  .steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .steps li:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .demoGrid,
+  .modules {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workflowSteps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .trust > div {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+
+@media (max-width: 600px) {
+  .page {
+    padding-block: 48px 66px;
+  }
+
+  .pageHeader {
+    margin-bottom: 28px;
+  }
+
+  .pageHeader h1 {
+    font-size: clamp(36px, 10vw, 48px);
+  }
+
+  .pageHeader > p:last-child {
+    margin-top: 14px;
+    font-size: 13px;
+  }
+
+  .demoGrid,
+  .modules,
+  .workflowSteps,
+  .controlGrid,
+  .investorGrid,
+  .audiences > div {
+    grid-template-columns: 1fr;
+  }
+
+  .demoCard {
+    min-height: 250px;
+    padding: 20px;
+  }
+
+  .module {
+    min-height: 155px;
+    padding: 15px 16px 25px;
+  }
+
+  .workflowSteps a {
+    min-height: 112px;
+    padding: 13px;
+  }
+
+  .workflow,
+  .trust,
+  .audiences {
+    padding-block: 48px;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    margin-top: 23px;
+  }
+
+  .steps li,
+  .steps li:last-child {
+    min-height: unset;
+    grid-column: auto;
+    padding: 13px 15px;
+  }
+
+  .steps b {
+    margin-top: 10px;
+  }
+
+  .audiences article {
+    min-height: 145px;
+    border-right: 0;
+    border-bottom: 1px solid var(--p3-line);
+  }
+
+  .audiences article:last-child {
+    border-bottom: 0;
+  }
+
+  .sectionTitle {
+    margin-top: 30px;
+    font-size: 25px;
+  }
+
+  .controlGrid article,
+  .investorGrid article,
+  .traction {
+    padding: 18px;
+  }
+
+  .traction ul {
+    grid-template-columns: 1fr;
+    padding-left: 18px;
+  }
+
+  .actions {
+    flex-direction: column;
+    gap: 9px;
+  }
+
+  .primaryLink,
+  .secondaryLink {
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .module {
+    transition: none;
+  }
+}

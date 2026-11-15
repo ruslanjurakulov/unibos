@@ -3,6 +3,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import {
+  P3ExtendedPage,
+  P3HomeAdditions,
+  P3ProductModules,
+  P3SolutionsWorkflow,
+  type ExtendedPage,
+} from "./p3-content";
 
 type Locale = "uz" | "ru" | "en";
 type Page =
@@ -11,18 +18,29 @@ type Page =
   | "pricing"
   | "about"
   | "contact"
+  | ExtendedPage
   | "dashboard"
   | "admin";
 
 const labels = {
   uz: {
     nav: ["Asosiy", "Yechimlar", "Narxlar", "Demo", "Biz haqimizda"],
+    platform: "Platforma",
+    security: "Xavfsizlik",
+    contactNav: "Aloqa",
+    investorsNav: "Investorlar",
+    faqNav: "FAQ",
     login: "Kirish",
     cta: "Demo ko‘rish",
     homeEyebrow: "RESTORANLAR UCHUN YAGONA RAQAMLI PLATFORMА",
-    homeTitle: "Restoran biznesi uchun yagona raqamli platforma",
+    homeTitle: "Bitta platforma. Butun biznesingiz.",
     homeLead:
-      "Buyurtma, stol, ombor, xodim va moliyani bir joyda boshqaring. Samaradorlikni oshiring, daromadni ko‘paytiring.",
+      "Restoran va kafelar uchun ishlab chiqilayotgan biznes operatsion tizimi. Birinchi yo‘nalish — restoranlar; bu saytdagi imkoniyatlar demo yoki reja sifatida belgilanadi.",
+    homePoints: [
+      "Restoranlar — birinchi yo‘nalish",
+      "Modulli mahsulot",
+      "Demo va reja ochiq ko‘rsatiladi",
+    ],
     solutions: "Imkoniyatlar",
     explore: "Imkoniyatlarni ko‘rish",
     demo: "Interaktiv demo",
@@ -81,7 +99,7 @@ const labels = {
     contactName: "Ism",
     contactPhone: "Telefon",
     contactMessage: "Xabar",
-    contactSend: "Demo yuborish",
+    contactSend: "Demo holatini ko‘rish",
     contactNoSendStatus: "Demo holati ko‘rsatildi. Ma’lumot yuborilmadi.",
     footer: "O‘zbekistonda yaratilgan. Dunyo uchun qurilgan.",
     dashboardTitle: "Dashboard",
@@ -102,12 +120,22 @@ const labels = {
   },
   en: {
     nav: ["Home", "Solutions", "Pricing", "Demo", "About"],
+    platform: "Platform",
+    security: "Security",
+    contactNav: "Contact",
+    investorsNav: "Investors",
+    faqNav: "FAQ",
     login: "Sign in",
     cta: "View demo",
     homeEyebrow: "ONE DIGITAL PLATFORM FOR RESTAURANTS",
-    homeTitle: "One digital platform for your restaurant business",
+    homeTitle: "One platform. Your entire business.",
     homeLead:
-      "Manage orders, tables, inventory, people and finance in one place. Improve operations and grow with clarity.",
+      "A business operating system in development for restaurants and cafés. Restaurants come first; capabilities on this site are marked as demos or plans.",
+    homePoints: [
+      "Restaurants first",
+      "Modular platform",
+      "Demo and planned status shown",
+    ],
     solutions: "Solutions",
     explore: "Explore the platform",
     demo: "Interactive demo",
@@ -163,7 +191,7 @@ const labels = {
     contactName: "Name",
     contactPhone: "Phone",
     contactMessage: "Message",
-    contactSend: "Preview form",
+    contactSend: "Preview demo state",
     contactNoSendStatus: "Demo state shown. Nothing was sent.",
     footer: "Made in Uzbekistan. Built for the world.",
     dashboardTitle: "Dashboard",
@@ -184,12 +212,22 @@ const labels = {
   },
   ru: {
     nav: ["Главная", "Решения", "Тарифы", "Демо", "О нас"],
+    platform: "Платформа",
+    security: "Безопасность",
+    contactNav: "Контакты",
+    investorsNav: "Инвесторам",
+    faqNav: "FAQ",
     login: "Войти",
     cta: "Смотреть демо",
     homeEyebrow: "ЕДИНАЯ ЦИФРОВАЯ ПЛАТФОРМА ДЛЯ РЕСТОРАНОВ",
-    homeTitle: "Единая цифровая платформа для ресторанного бизнеса",
+    homeTitle: "Одна платформа. Весь ваш бизнес.",
     homeLead:
-      "Управляйте заказами, залом, запасами, командой и финансами в одном месте. Повышайте эффективность и развивайте бизнес.",
+      "Бизнес-операционная система для ресторанов и кафе в разработке. Сначала рестораны; возможности на сайте отмечены как демо или планируемые.",
+    homePoints: [
+      "Сначала рестораны",
+      "Модульная платформа",
+      "Демо и планы обозначены",
+    ],
     solutions: "Решения",
     explore: "Возможности платформы",
     demo: "Интерактивное демо",
@@ -248,7 +286,7 @@ const labels = {
     contactName: "Имя",
     contactPhone: "Телефон",
     contactMessage: "Сообщение",
-    contactSend: "Показать демо",
+    contactSend: "Показать состояние демо",
     contactNoSendStatus: "Показан демо-статус. Данные не отправлены.",
     footer: "Создано в Узбекистане. Для всего мира.",
     dashboardTitle: "Панель управления",
@@ -269,7 +307,6 @@ const labels = {
   },
 } as const;
 
-const moduleIcons = ["01", "02", "03", "04", "05", "06"];
 const adminRows = [
   ["Almaz Restaurant", "Faol", "Pro", "2026-11-12"],
   ["Samarkand Plov", "Faol", "Basic", "2026-11-09"],
@@ -345,11 +382,13 @@ export function DesignPage({ page }: { page: Page }) {
                   : "Main navigation"
             }
           >
-            <Link href="/">{t.nav[0]}</Link>
+            <Link href="/#platform">{t.platform}</Link>
             <Link href="/solutions">{t.nav[1]}</Link>
             <Link href="/pricing">{t.nav[2]}</Link>
-            <Link href="/demo/guest">{t.nav[3]}</Link>
+            <Link href="/demo">{t.nav[3]}</Link>
             <Link href="/about">{t.nav[4]}</Link>
+            <Link href="/security">{t.security}</Link>
+            <Link href="/contact">{t.contactNav}</Link>
           </nav>
           <div className="p3-tools">
             <label className="sr-only" htmlFor="p3-locale">
@@ -383,7 +422,7 @@ export function DesignPage({ page }: { page: Page }) {
             <Link href="/sign-in" className="p3-login">
               {t.login}
             </Link>
-            <Link href="/demo/guest" className="p3-header-cta">
+            <Link href="/demo" className="p3-header-cta">
               {t.cta}
             </Link>
             <button
@@ -411,8 +450,8 @@ export function DesignPage({ page }: { page: Page }) {
                 : "Mobile navigation"
           }
         >
-          <Link href="/" onClick={() => setMenuOpen(false)}>
-            {t.nav[0]}
+          <Link href="/#platform" onClick={() => setMenuOpen(false)}>
+            {t.platform}
           </Link>
           <Link href="/solutions" onClick={() => setMenuOpen(false)}>
             {t.nav[1]}
@@ -420,27 +459,36 @@ export function DesignPage({ page }: { page: Page }) {
           <Link href="/pricing" onClick={() => setMenuOpen(false)}>
             {t.nav[2]}
           </Link>
-          <Link href="/demo/guest" onClick={() => setMenuOpen(false)}>
+          <Link href="/demo" onClick={() => setMenuOpen(false)}>
             {t.nav[3]}
           </Link>
           <Link href="/about" onClick={() => setMenuOpen(false)}>
             {t.nav[4]}
           </Link>
           <Link href="/contact" onClick={() => setMenuOpen(false)}>
-            {locale === "uz"
-              ? "Bog‘lanish"
-              : locale === "ru"
-                ? "Контакты"
-                : "Contact"}
+            {t.contactNav}
+          </Link>
+          <Link href="/security" onClick={() => setMenuOpen(false)}>
+            {t.security}
+          </Link>
+          <Link href="/investors" onClick={() => setMenuOpen(false)}>
+            {t.investorsNav}
+          </Link>
+          <Link href="/faq" onClick={() => setMenuOpen(false)}>
+            {t.faqNav}
           </Link>
         </nav>
       )}
 
       {page === "home" && <Home t={t} locale={locale} />}
-      {page === "solutions" && <Solutions t={t} />}
+      {page === "solutions" && <Solutions t={t} locale={locale} />}
       {page === "pricing" && <Pricing t={t} />}
       {page === "about" && <About t={t} />}
       {page === "contact" && <Contact t={t} />}
+      {(page === "demoHub" ||
+        page === "security" ||
+        page === "investors" ||
+        page === "faq") && <P3ExtendedPage page={page} locale={locale} />}
       {page === "dashboard" && (
         <Dashboard
           t={t}
@@ -483,16 +531,13 @@ export function DesignPage({ page }: { page: Page }) {
               }
             >
               <Link href="/solutions">{t.solutions}</Link>
-              <Link href="/demo/guest">{t.guest}</Link>
+              <Link href="/demo">{t.nav[3]}</Link>
               <Link href="/pricing">{t.nav[2]}</Link>
               <Link href="/about">{t.nav[4]}</Link>
-              <Link href="/contact">
-                {locale === "uz"
-                  ? "Bog‘lanish"
-                  : locale === "ru"
-                    ? "Контакты"
-                    : "Contact"}
-              </Link>
+              <Link href="/security">{t.security}</Link>
+              <Link href="/investors">{t.investorsNav}</Link>
+              <Link href="/faq">{t.faqNav}</Link>
+              <Link href="/contact">{t.contactNav}</Link>
             </nav>
             <small>
               © UniBOS ·{" "}
@@ -527,7 +572,7 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
           <h1>{t.homeTitle}</h1>
           <p>{t.homeLead}</p>
           <div className="p3-hero-actions">
-            <Link className="p3-button p3-button-gold" href="/demo/guest">
+            <Link className="p3-button p3-button-gold" href="/demo">
               {t.cta}
               <span>→</span>
             </Link>
@@ -537,9 +582,9 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
             </Link>
           </div>
           <div className="p3-hero-points">
-            <span>◈ {t.moduleNames[0]}</span>
-            <span>◈ {t.moduleNames[2]}</span>
-            <span>◈ {t.moduleNames[4]}</span>
+            {t.homePoints.map((point) => (
+              <span key={point}>◈ {point}</span>
+            ))}
           </div>
         </div>
         <div className="p3-hero-art">
@@ -578,26 +623,7 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
           </div>
           <p>{t.modulesLead}</p>
         </div>
-        <div className="p3-module-grid">
-          {t.moduleNames.map((name, index) => (
-            <Link
-              href={
-                index === 2
-                  ? "/demo/guest"
-                  : index === 0 || index === 5
-                    ? "/demo/dashboard"
-                    : "/solutions"
-              }
-              className="p3-module-card"
-              key={name}
-            >
-              <span className="p3-module-icon">{moduleIcons[index]}</span>
-              <b>{name}</b>
-              <p>{t.moduleText[index]}</p>
-              <span className="p3-module-arrow">→</span>
-            </Link>
-          ))}
-        </div>
+        <P3ProductModules locale={locale} />
       </section>
       <section className="p3-home-demo">
         <div className="p3-wrap p3-demo-inner">
@@ -647,11 +673,18 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
           height={300}
         />
       </section>
+      <P3HomeAdditions locale={locale} />
     </>
   );
 }
 
-function Solutions({ t }: { t: (typeof labels)[Locale] }) {
+function Solutions({
+  t,
+  locale,
+}: {
+  t: (typeof labels)[Locale];
+  locale: Locale;
+}) {
   return (
     <>
       <section className="p3-subhero p3-solutions-hero">
@@ -659,28 +692,14 @@ function Solutions({ t }: { t: (typeof labels)[Locale] }) {
           <Eyebrow>{t.solutions}</Eyebrow>
           <h1>{t.modules}</h1>
           <p>{t.modulesLead}</p>
-          <Link className="p3-button p3-button-gold" href="/demo/guest">
+          <Link className="p3-button p3-button-gold" href="/demo">
             {t.cta}
             <span>→</span>
           </Link>
         </div>
         <div className="p3-wrap p3-solutions-content">
-          <div className="p3-module-grid">
-            {t.moduleNames.map((name, index) => (
-              <article className="p3-module-card" key={name}>
-                <span className="p3-module-icon">{moduleIcons[index]}</span>
-                <b>{name}</b>
-                <p>{t.moduleText[index]}</p>
-                <Link
-                  href={index === 2 ? "/demo/guest" : "/demo/dashboard"}
-                  className="p3-module-arrow"
-                  aria-label={`${name} — ${t.demo}`}
-                >
-                  →
-                </Link>
-              </article>
-            ))}
-          </div>
+          <P3SolutionsWorkflow locale={locale} />
+          <P3ProductModules locale={locale} />
           <div className="p3-integrity-note">
             <span>✦</span>
             <p>{t.demoOnly}</p>
@@ -760,7 +779,7 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
                   : "p3-button p3-button-outline"
               }
             >
-              {t.nav[4]}
+              {t.contactNav}
               <span>→</span>
             </Link>
           </article>
@@ -813,7 +832,7 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
   return (
     <section className="p3-contact-page p3-wrap">
       <div className="p3-contact-copy">
-        <Eyebrow>{t.nav[4]}</Eyebrow>
+        <Eyebrow>{t.contactNav}</Eyebrow>
         <h1>{t.contactTitle}</h1>
         <p>{t.contactLead}</p>
         <div className="p3-contact-status">
@@ -825,27 +844,25 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
         </div>
       </div>
       <div className="p3-contact-card">
-        <form
+        <div
           className="p3-contact-form"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setSent(true);
-          }}
+          role="group"
+          aria-label={t.contactDemoNote}
         >
           <p className="p3-contact-demo-note">{t.contactDemoNote}</p>
-          <label>
-            {t.contactName}
-            <input autoComplete="off" name="name" type="text" />
-          </label>
-          <label>
-            {t.contactPhone}
-            <input autoComplete="off" name="phone" type="tel" />
-          </label>
-          <label>
-            {t.contactMessage}
-            <textarea name="message" rows={3} />
-          </label>
-          <button className="p3-button p3-button-dark" type="submit">
+          <div className="p3-contact-preview-fields">
+            {[t.contactName, t.contactPhone, t.contactMessage].map((label) => (
+              <div className="p3-contact-preview-row" key={label}>
+                <span>{label}</span>
+                <span aria-hidden="true" />
+              </div>
+            ))}
+          </div>
+          <button
+            className="p3-button p3-button-dark"
+            type="button"
+            onClick={() => setSent(true)}
+          >
             {t.contactSend}
             <span>→</span>
           </button>
@@ -854,7 +871,7 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
               {t.contactNoSendStatus}
             </p>
           )}
-        </form>
+        </div>
       </div>
     </section>
   );
