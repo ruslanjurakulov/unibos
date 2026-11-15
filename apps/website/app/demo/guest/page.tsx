@@ -222,8 +222,16 @@ export default function GuestDemoPage() {
         </nav>
       </header>
       <div className="guest-layout">
-        <div className="guest-hero" role="img" aria-label={t.decorative}>
-          <span className="guest-hero-caption">{t.scanPrompt}</span>
+        <div className="guest-hero">
+          <div
+            className="guest-hero-scene"
+            role="img"
+            aria-label={t.decorative}
+          ></div>
+          <div className="guest-hero-details">
+            <span className="guest-hero-caption">{t.scanPrompt}</span>
+            <span className="guest-hero-badge">QR / NFC · DEMO</span>
+          </div>
         </div>
         <div className="guest-menu">
           <div className="guest-info">

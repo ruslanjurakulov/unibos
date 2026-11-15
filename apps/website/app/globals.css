@@ -3832,17 +3832,44 @@ button:focus-visible {
   height: 100%;
   align-self: stretch;
   position: relative;
-  background-color: #172f27;
-  background-image:
-    linear-gradient(180deg, transparent 28%, #102a23 100%),
-    url("/images/p3/qr-menu-demo-v2.jpg");
-  background-size:
-    100% 100%,
-    contain;
-  background-position:
-    center,
-    top center;
-  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background-color: #f7f4ec;
+}
+.guest-page .guest-hero::after {
+  content: none;
+}
+.guest-page .guest-hero-scene {
+  position: relative;
+  flex: none;
+  aspect-ratio: 491 / 296;
+  background: url("/images/p3/qr-menu-demo-v2.jpg") center / 100% 100% no-repeat;
+}
+.guest-page .guest-hero-details {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 18px 16px;
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 7px;
+  background: #f7f4ec;
+}
+.guest-page .guest-hero-caption {
+  position: static;
+  color: #0f3d32;
+  font-size: 11px;
+  text-shadow: none;
+}
+.guest-hero-badge {
+  padding: 4px 8px;
+  color: #f7f4ec;
+  background: #0f3d32;
+  border: 1px solid #c9ae78;
+  border-radius: 99px;
+  font: 600 9px/1.2 var(--sans);
+  letter-spacing: 0.04em;
 }
 .guest-page .guest-menu {
   grid-column: 2;
@@ -3851,15 +3878,6 @@ button:focus-visible {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-.guest-page .guest-hero:after {
-  content: "QR / NFC · DEMO";
-  left: 18px;
-  bottom: 17px;
-  color: #f7f4ec;
-  background: #0f3d32e8;
-  border: 1px solid #c9ae78;
-  border-radius: 99px;
 }
 .guest-hero-caption {
   position: absolute;
@@ -3987,7 +4005,19 @@ button:focus-visible {
     grid-row: auto;
     min-height: 0;
     height: auto;
-    aspect-ratio: 1.48;
+  }
+  .guest-page .guest-hero-scene {
+    aspect-ratio: 491 / 296;
+  }
+  .guest-page .guest-hero-details {
+    padding: 13px 16px 12px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+  }
+  .guest-page .guest-hero-caption {
+    font-size: 9px;
   }
   .guest-page .guest-menu {
     grid-column: 1;
