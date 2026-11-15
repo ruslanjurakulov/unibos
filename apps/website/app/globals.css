@@ -2578,10 +2578,44 @@ button:focus-visible {
   box-shadow: 0 22px 52px #051a153d;
 }
 .p3-solutions-content {
-  padding-block: 70px 90px;
+  padding-block: 12px 58px;
+}
+.p3-solutions-hero {
+  padding-block: 68px 0;
+  background:
+    linear-gradient(90deg, #08251ff2 0%, #08251fc9 46%, #08251f8c 100%),
+    url("/images/p3/about-scene-v2.jpg") center / cover no-repeat;
+}
+.p3-solutions-heading {
+  padding-bottom: 23px;
+}
+.p3-solutions-heading h1 {
+  max-width: 700px;
+}
+.p3-solutions-heading > p:not(.p3-eyebrow) {
+  max-width: 600px;
+  margin: 17px 0 21px;
+  color: #e9eee0d9;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.p3-solutions-hero .p3-module-card {
+  min-height: 150px;
+  background: #fffdf8;
+  border-color: #e4e1d7;
+  color: #173d32;
+}
+.p3-solutions-hero .p3-module-card p {
+  color: #66766b;
+}
+.p3-solutions-hero .p3-module-card:hover {
+  background: #f3f1e9;
 }
 .p3-solutions-content .p3-module-grid {
   grid-template-columns: repeat(3, 1fr);
+}
+.p3-solutions-hero .p3-integrity-note {
+  background: #fffdf8;
 }
 .p3-integrity-note {
   display: flex;
@@ -3472,7 +3506,7 @@ button:focus-visible {
     height: 230px;
   }
   .p3-solutions-content {
-    padding-block: 35px 55px;
+    padding-block: 8px 40px;
   }
   .p3-pricing-page {
     padding-block: 45px 58px;

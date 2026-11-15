@@ -618,44 +618,36 @@ function Solutions({ t }: { t: (typeof labels)[Locale] }) {
   return (
     <>
       <section className="p3-subhero p3-solutions-hero">
-        <div className="p3-wrap p3-subhero-inner">
-          <div>
-            <Eyebrow>{t.solutions}</Eyebrow>
-            <h1>{t.modules}</h1>
-            <p>{t.modulesLead}</p>
-            <Link className="p3-button p3-button-gold" href="/demo/guest">
-              {t.cta}
-              <span>→</span>
-            </Link>
+        <div className="p3-wrap p3-solutions-heading">
+          <Eyebrow>{t.solutions}</Eyebrow>
+          <h1>{t.modules}</h1>
+          <p>{t.modulesLead}</p>
+          <Link className="p3-button p3-button-gold" href="/demo/guest">
+            {t.cta}
+            <span>→</span>
+          </Link>
+        </div>
+        <div className="p3-wrap p3-solutions-content">
+          <div className="p3-module-grid">
+            {t.moduleNames.map((name, index) => (
+              <article className="p3-module-card" key={name}>
+                <span className="p3-module-icon">{moduleIcons[index]}</span>
+                <b>{name}</b>
+                <p>{t.moduleText[index]}</p>
+                <Link
+                  href={index === 2 ? "/demo/guest" : "/demo/dashboard"}
+                  className="p3-module-arrow"
+                  aria-label={`${name} — ${t.demo}`}
+                >
+                  →
+                </Link>
+              </article>
+            ))}
           </div>
-          <Image
-            src="/images/p3/about-scene-v2.jpg"
-            alt="Restoran muhitidagi raqamli platforma demo tasviri"
-            width={520}
-            height={400}
-          />
-        </div>
-      </section>
-      <section className="p3-wrap p3-solutions-content">
-        <div className="p3-module-grid">
-          {t.moduleNames.map((name, index) => (
-            <article className="p3-module-card" key={name}>
-              <span className="p3-module-icon">{moduleIcons[index]}</span>
-              <b>{name}</b>
-              <p>{t.moduleText[index]}</p>
-              <Link
-                href={index === 2 ? "/demo/guest" : "/demo/dashboard"}
-                className="p3-module-arrow"
-                aria-label={`${name} — ${t.demo}`}
-              >
-                →
-              </Link>
-            </article>
-          ))}
-        </div>
-        <div className="p3-integrity-note">
-          <span>✦</span>
-          <p>{t.demoOnly}</p>
+          <div className="p3-integrity-note">
+            <span>✦</span>
+            <p>{t.demoOnly}</p>
+          </div>
         </div>
       </section>
     </>
