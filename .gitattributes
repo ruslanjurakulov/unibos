@@ -1,0 +1,7 @@
+*.pdf binary
+*.png binary
+*.ico binary
+*.zip binary
+# Preserve upstream license text verbatim, including its whitespace.
+assets/brand/*-OFL.txt -whitespace
+assets/brand/Guide-Font-LICENSE.txt -whitespace
