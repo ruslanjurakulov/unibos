@@ -1,0 +1,4 @@
+# Investor strategy
+Demonstrate working product, evidence of real restaurant pain, pilot agreements, actual paid invoices and retention, security controls and financial model. Never inflate metrics. Founder owns outbound approval. Candidate 90-day targets (not traction): 5–10 pilot venues, 50 paying tenants, UZS 15m MRR assuming 300k ARPU; exploratory raise $50–150k, not valuation or committed funds.
+
+Measure MRR/ARR, activation, paying tenants, churn, gross margin, CAC, LTV with cohort and assumptions, GMV separate from revenue. Data room: entity/IP ownership, domain, cap table, contracts, financial reconciliation, security/audit reports, metrics definitions, product roadmap. Market sizing and competitor research require sourced verification. Pitch: problem, solution, live demo, market, business model, traction, team, financials, ask/use of funds. $100k illustrative allocation: product 35%, sales 25%, security 15%, infra 10%, operations 10%, reserve 5%.
