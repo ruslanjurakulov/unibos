@@ -1,6 +1,6 @@
 # P0 foundation and brand review
 
-Date:2026-11-15. Status: **BLOCKED — do not merge; do not start P1.**
+Date:2026-11-15. **Historical pre-merge snapshot.** P0 subsequently passed rerun43724281048 and merged as2a1e350; main verification passed. See docs/P1_FOUNDATION.md and PR#1 for final completion evidence. The blocker/status wording below records the earlier audit state, not the current gate.
 
 ## Scope and authority
 

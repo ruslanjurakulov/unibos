@@ -1,0 +1,38 @@
+name: Engineering foundation
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Install Node 24
+        run: |
+          curl --fail --silent --show-error https://nodejs.org/dist/v24.22.1/SHASUMS256.txt -o /tmp/node-shasums
+          curl --fail --silent --show-error https://nodejs.org/dist/v24.22.1/node-v24.22.1-linux-x64.tar.xz -o /tmp/node-v24.22.1-linux-x64.tar.xz
+          cd /tmp
+          sha256sum --check --ignore-missing node-shasums
+          tar -xf node-v24.22.1-linux-x64.tar.xz
+          echo /tmp/node-v24.22.1-linux-x64/bin >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run security:secrets
+      - run: npm audit --audit-level=high
+      - run: npm run setup:local && npm run infra:up
+      - run: npm run test:smoke
+      - name: Stop isolated local services
+        if: always()
+        run: docker compose down

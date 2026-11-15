@@ -1,0 +1,157 @@
+:root {
+  color-scheme: light;
+  --forest: #0f3d32;
+  --ivory: #f7f4ec;
+  --gold: #c9ae78;
+  --mint: #d8e3db;
+  --slate: #1f2937;
+  background: var(--ivory);
+  color: var(--forest);
+  font-family: Arial, Helvetica, sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.foundation {
+  width: min(1160px, 100%);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 32px clamp(20px, 5vw, 64px);
+}
+
+.brand-header,
+footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand-header {
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--mint);
+}
+
+.wordmark {
+  width: 196px;
+  height: auto;
+  margin-left: -21px;
+}
+
+.phase-label,
+.eyebrow,
+.card-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  line-height: 1.5;
+  text-transform: uppercase;
+}
+
+.phase-label {
+  padding: 10px 14px;
+  border: 1px solid var(--forest);
+  border-radius: 999px;
+}
+
+.introduction {
+  padding: 72px 0 48px;
+}
+
+.eyebrow {
+  margin: 0 0 20px;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.5rem, 6vw, 4.8rem);
+  font-weight: 600;
+  letter-spacing: -0.055em;
+  line-height: 1.06;
+}
+
+.lead {
+  max-width: 640px;
+  margin: 28px 0 0;
+  color: var(--slate);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.status-card {
+  padding: 28px;
+  border: 1px solid var(--forest);
+  border-top: 4px solid var(--gold);
+  border-radius: 4px;
+  background: var(--forest);
+  color: var(--ivory);
+}
+
+.status-card-muted {
+  border-color: var(--mint);
+  border-top-color: var(--forest);
+  background: transparent;
+  color: var(--slate);
+}
+
+.card-label {
+  display: block;
+  margin-bottom: 16px;
+}
+
+h2 {
+  margin: 0 0 14px;
+  font-size: 1.35rem;
+  letter-spacing: -0.025em;
+  line-height: 1.35;
+}
+
+.status-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+footer {
+  margin-top: 48px;
+  padding-top: 24px;
+  border-top: 1px solid var(--mint);
+  color: var(--slate);
+  font-size: 0.8rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .brand-header,
+  footer {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .introduction {
+    padding-top: 48px;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .status-card {
+    padding: 24px;
+  }
+}
