@@ -36,6 +36,7 @@ const copy = {
     noOrder: "Buyurtma yuborilmadi.",
     unavailable: "Bu ko‘rinishda buyurtma yuborilmaydi.",
     decorative: "Namuna restoran tasviri",
+    scanPrompt: "QR orqali menyuni oching · demo",
   },
   en: {
     banner:
@@ -61,6 +62,7 @@ const copy = {
     noOrder: "No order has been submitted.",
     unavailable: "This preview does not submit orders.",
     decorative: "Decorative sample restaurant image",
+    scanPrompt: "Scan to open the menu · demo",
   },
   ru: {
     banner: "ДЕМО · Пример меню · Заказ не отправляется в ресторан.",
@@ -85,6 +87,7 @@ const copy = {
     noOrder: "Заказ не отправлен.",
     unavailable: "В этом демо нельзя отправить заказ.",
     decorative: "Иллюстрация ресторана для демо",
+    scanPrompt: "Откройте меню по QR · демо",
   },
 } satisfies Record<
   Locale,
@@ -107,6 +110,7 @@ const copy = {
     noOrder: string;
     unavailable: string;
     decorative: string;
+    scanPrompt: string;
   }
 >;
 
@@ -218,7 +222,9 @@ export default function GuestDemoPage() {
         </nav>
       </header>
       <div className="guest-layout">
-        <div className="guest-hero" role="img" aria-label={t.decorative} />
+        <div className="guest-hero" role="img" aria-label={t.decorative}>
+          <span className="guest-hero-caption">{t.scanPrompt}</span>
+        </div>
         <div className="guest-menu">
           <div className="guest-info">
             <small>{t.restaurant}</small>

@@ -54,6 +54,11 @@ const labels = {
     pricingLead:
       "Obuna paketlari va narxlar tasdiqlanishi bilan e’lon qilinadi.",
     pricingSoon: "Tez kunda",
+    pricingDemoNote: "DEMO NARXLARI · Faqat vizual namuna, haqiqiy tarif emas.",
+    pricingDemo: "DEMO · real tarif emas",
+    billingMonthly: "Oyma-oy",
+    billingYearly: "Yillik",
+    yearlyPending: "Yillik demo qiymat tasdiqlanmagan",
     pricingFeatures: [
       "Asosiy funksiyalar",
       "Filial boshqaruvi",
@@ -71,6 +76,13 @@ const labels = {
       "Savollaringiz bormi? Aloqa kanallari tasdiqlangach, shu sahifada e’lon qilamiz.",
     contactSoon: "Aloqa ma’lumotlari tayyorlanmoqda",
     noForm: "Hozircha xabar yuborish yoqilmagan. Shaxsiy ma’lumot kiritmang.",
+    contactDemoNote:
+      "DEMO FORMA · Ma’lumot yuborilmaydi yoki saqlanmaydi. Haqiqiy shaxsiy ma’lumot kiritmang.",
+    contactName: "Ism",
+    contactPhone: "Telefon",
+    contactMessage: "Xabar",
+    contactSend: "Demo yuborish",
+    contactNoSendStatus: "Demo holati ko‘rsatildi. Ma’lumot yuborilmadi.",
     footer: "O‘zbekistonda yaratilgan. Dunyo uchun qurilgan.",
     dashboardTitle: "Dashboard",
     superAdmin: "Super Admin",
@@ -126,6 +138,11 @@ const labels = {
     pricingTitle: "A plan for your business",
     pricingLead: "Plans and pricing will be published once they are confirmed.",
     pricingSoon: "Coming soon",
+    pricingDemoNote: "DEMO PRICES · Visual sample only, not actual pricing.",
+    pricingDemo: "DEMO · not an actual rate",
+    billingMonthly: "Monthly",
+    billingYearly: "Annual",
+    yearlyPending: "Annual demo value not confirmed",
     pricingFeatures: ["Core features", "Location management", "Team and roles"],
     aboutTitle: "A technology partner for restaurants",
     aboutLead:
@@ -141,6 +158,13 @@ const labels = {
     contactSoon: "Contact details are being prepared",
     noForm:
       "Messaging is not enabled yet. Please do not enter personal information.",
+    contactDemoNote:
+      "DEMO FORM · Nothing is sent or saved. Do not enter real personal information.",
+    contactName: "Name",
+    contactPhone: "Phone",
+    contactMessage: "Message",
+    contactSend: "Preview form",
+    contactNoSendStatus: "Demo state shown. Nothing was sent.",
     footer: "Made in Uzbekistan. Built for the world.",
     dashboardTitle: "Dashboard",
     superAdmin: "Super Admin",
@@ -196,6 +220,12 @@ const labels = {
     pricingTitle: "Тариф для вашего бизнеса",
     pricingLead: "Опубликуем тарифы после утверждения условий и стоимости.",
     pricingSoon: "Скоро",
+    pricingDemoNote:
+      "ДЕМО-ЦЕНЫ · Только визуальный образец, это не реальные тарифы.",
+    pricingDemo: "ДЕМО · не реальная цена",
+    billingMonthly: "Помесячно",
+    billingYearly: "За год",
+    yearlyPending: "Годовая демо-цена не утверждена",
     pricingFeatures: [
       "Основные функции",
       "Управление филиалами",
@@ -213,6 +243,13 @@ const labels = {
       "Есть вопросы? Опубликуем здесь подтверждённые контактные данные.",
     contactSoon: "Контактные данные готовятся",
     noForm: "Отправка сообщений пока отключена. Не вводите личные данные.",
+    contactDemoNote:
+      "ДЕМО-ФОРМА · Данные не отправляются и не сохраняются. Не вводите настоящие личные данные.",
+    contactName: "Имя",
+    contactPhone: "Телефон",
+    contactMessage: "Сообщение",
+    contactSend: "Показать демо",
+    contactNoSendStatus: "Показан демо-статус. Данные не отправлены.",
     footer: "Создано в Узбекистане. Для всего мира.",
     dashboardTitle: "Панель управления",
     superAdmin: "Super Admin",
@@ -655,6 +692,9 @@ function Solutions({ t }: { t: (typeof labels)[Locale] }) {
 }
 
 function Pricing({ t }: { t: (typeof labels)[Locale] }) {
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const demoPrices = ["349 000", "699 000", "1 299 000"];
+
   return (
     <section className="p3-pricing-page">
       <div className="p3-wrap p3-pricing-grid">
@@ -662,7 +702,27 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
           <Eyebrow>{t.nav[2]}</Eyebrow>
           <h1>{t.pricingTitle}</h1>
           <p>{t.pricingLead}</p>
-          <span className="p3-pricing-stamp">{t.pricingSoon}</span>
+          <span className="p3-pricing-stamp">{t.pricingDemoNote}</span>
+          <div
+            className="p3-billing-toggle"
+            role="group"
+            aria-label={t.pricingTitle}
+          >
+            <button
+              type="button"
+              aria-pressed={billing === "monthly"}
+              onClick={() => setBilling("monthly")}
+            >
+              {t.billingMonthly}
+            </button>
+            <button
+              type="button"
+              aria-pressed={billing === "yearly"}
+              onClick={() => setBilling("yearly")}
+            >
+              {t.billingYearly}
+            </button>
+          </div>
         </div>
         {["Basic", "Pro", "Business"].map((plan, index) => (
           <article
@@ -670,8 +730,14 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
             key={plan}
           >
             <span className="p3-plan-name">{plan}</span>
-            <b className="p3-price-pending">{t.pricingSoon}</b>
-            <small>{t.pricingLead}</small>
+            <b className="p3-price-pending">
+              {billing === "monthly" ? demoPrices[index] : t.yearlyPending}
+            </b>
+            <small>
+              {billing === "monthly"
+                ? `UZS / ${t.billingMonthly} · ${t.pricingDemo}`
+                : t.pricingDemo}
+            </small>
             <ul>
               {t.pricingFeatures.map((feature) => (
                 <li key={feature}>
@@ -742,6 +808,8 @@ function About({ t }: { t: (typeof labels)[Locale] }) {
 }
 
 function Contact({ t }: { t: (typeof labels)[Locale] }) {
+  const [sent, setSent] = useState(false);
+
   return (
     <section className="p3-contact-page p3-wrap">
       <div className="p3-contact-copy">
@@ -757,20 +825,36 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
         </div>
       </div>
       <div className="p3-contact-card">
-        <Image
-          className="p3-contact-icon"
-          src="/brand/mark-light.svg"
-          alt="UniBOS"
-          width={46}
-          height={46}
-          unoptimized
-        />
-        <b>{t.contactSoon}</b>
-        <p>{t.noForm}</p>
-        <Link href="/" className="p3-button p3-button-dark">
-          {t.nav[0]}
-          <span>→</span>
-        </Link>
+        <form
+          className="p3-contact-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            setSent(true);
+          }}
+        >
+          <p className="p3-contact-demo-note">{t.contactDemoNote}</p>
+          <label>
+            {t.contactName}
+            <input autoComplete="off" name="name" type="text" />
+          </label>
+          <label>
+            {t.contactPhone}
+            <input autoComplete="off" name="phone" type="tel" />
+          </label>
+          <label>
+            {t.contactMessage}
+            <textarea name="message" rows={3} />
+          </label>
+          <button className="p3-button p3-button-dark" type="submit">
+            {t.contactSend}
+            <span>→</span>
+          </button>
+          {sent && (
+            <p className="p3-contact-result" role="status">
+              {t.contactNoSendStatus}
+            </p>
+          )}
+        </form>
       </div>
     </section>
   );

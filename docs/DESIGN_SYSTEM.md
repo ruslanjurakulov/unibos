@@ -6,19 +6,21 @@ This document records how the approved top-level `DESIGN_SYSTEM.md` is applied i
 
 The approved UniBOS Brand Book v1.1 and Brand Kit v1.1 define the identity. The approved mark is the geometric U with the central vertical gold bar. Keep its SVG geometry and proportions unchanged; use the canonical files in `assets/brand/`. Do not redraw the mark or introduce the earlier diagonal accent concept. Do not use the registered trademark symbol.
 
-| Token | Value | Use |
-|---|---|---|
+| Token        | Value     | Use                                                   |
+| ------------ | --------- | ----------------------------------------------------- |
 | Forest Green | `#0F3D32` | Primary brand surface, navigation and primary actions |
-| Ivory | `#F7F4EC` | Warm brand canvas and inverse text |
-| Gold Sand | `#C9AE78` | Focus accent, highlights and restrained detail |
-| Mint Gray | `#D8E3DB` | Supporting surface and quiet separation |
-| Deep Slate | `#1F2937` | Main operational text |
+| Ivory        | `#F7F4EC` | Warm brand canvas and inverse text                    |
+| Gold Sand    | `#C9AE78` | Focus accent, highlights and restrained detail        |
+| Mint Gray    | `#D8E3DB` | Supporting surface and quiet separation               |
+| Deep Slate   | `#1F2937` | Main operational text                                 |
 
 Never shift the approved core palette. Use neutral tints as supporting interface colors; reserve gold for small accents and accessible focus indicators rather than long text.
 
 ## Two interface directions
 
 **Modern Luxury** is for the public site and guest experience. Use editorial hierarchy, spacious layouts, warm ivory, forest green, measured gold accents, Playfair Display headings and Inter text. The home, solutions, QR menu, pricing, about and contact surfaces follow the owner's supplied JPG references. Cropped local visual assets are derived from those references and remain illustrative demo artwork, not customer photography.
+
+Reference pricing figures may appear only with clear demo/non-production labels; annual terms remain unpublished until approved. The contact form is a visual interaction demo only and must not send or retain user entries. Do not present mockup pricing, sample analytics, contact details or restaurant identities as production information.
 
 **Global Corporate** is for the business workspace and later operations modules. Prioritize dense but legible business information, compact tables, clear states, low-friction actions, responsive layouts and both light and dark themes. The dashboard and Super Admin screens are clearly labeled sample demos; the authenticated workspace supports organization and branch setup from the P2 API. Menus, orders, staff scheduling, analytics and billing remain outside the P3 production API scope.
 
