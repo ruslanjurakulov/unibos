@@ -6,4 +6,6 @@ The local API proxy uses `UNIBOS_API_ORIGIN`, defaulting to `http://127.0.0.1:30
 
 Run the website workspace `dev`, `build`, `start` and `typecheck` scripts from the repository root. Development binds to loopback by default; the preview server also binds to loopback. The build uses webpack explicitly. Font binaries are self-hosted and covered by the OFL notices in `assets/brand/`.
 
+The website workspace declares its own TypeScript and Node type development dependencies so Vercel can type-check it when building from `apps/website` as the monorepo root directory. Vercel project build settings use Node 24.x, matching the repository engine range.
+
 The original central-bar logo and favicon remain unchanged. Security headers are a local baseline; CSP allows Next's inline bootstrap/style content. Production needs a reviewed nonce/hash policy and HTTPS/HSTS configuration. `robots` noindex is a crawler hint, not access control. See `docs/DESIGN_SYSTEM.md` for visual and content rules.
