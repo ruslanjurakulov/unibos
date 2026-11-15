@@ -1,0 +1,40 @@
+{
+  "name": "unibos",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
+  },
+  "packageManager": "npm@11.9.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "setup:local": "node scripts/setup-local.mjs",
+    "infra:up": "docker compose up -d --wait",
+    "infra:down": "docker compose down",
+    "build": "npm run build --workspace @unibos/runtime && npm run build --workspace @unibos/api && npm run build --workspace @unibos/website",
+    "typecheck": "npm run build --workspace @unibos/runtime && npm run typecheck --workspace @unibos/runtime && npm run typecheck --workspace @unibos/api && npm run typecheck --workspace @unibos/website",
+    "test": "npm run build --workspace @unibos/runtime && npm run test --workspace @unibos/runtime && npm run test --workspace @unibos/api",
+    "test:smoke": "node --env-file=.env scripts/smoke.mjs",
+    "lint": "eslint apps packages",
+    "format:check": "prettier --check 'apps/**/*.{ts,tsx,json,css}' 'packages/**/*.{ts,json}' 'scripts/*.mjs' package.json tsconfig.base.json eslint.config.mjs compose.yaml .github/workflows/engineering.yml",
+    "dev:api": "npm run dev --workspace @unibos/api",
+    "dev:website": "npm run dev --workspace @unibos/website",
+    "security:secrets": "node scripts/check-secrets.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "eslint": "10.15.0",
+    "prettier": "3.10.1",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.72.2"
+  },
+  "overrides": {
+    "@typescript-eslint/typescript-estree": {
+      "minimatch": "11.0.8"
+    }
+  }
+}

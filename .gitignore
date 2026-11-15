@@ -10,3 +10,6 @@ coverage/
 *.p12
 *.log
 *.dump
+*.tsbuildinfo
+.turbo/
+work/

@@ -1,0 +1,46 @@
+{
+  "browser": "Chromium156 Linux",
+  "rows": [
+    {
+      "width": 320,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 375,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 390,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 430,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 768,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 1024,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 1440,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    },
+    {
+      "width": 1920,
+      "overflow": false,
+      "title": "UniBOS — Engineering foundation"
+    }
+  ],
+  "consoleErrors": []
+}
