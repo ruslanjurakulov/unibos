@@ -118,13 +118,18 @@ const products = [
 
 export default function GuestDemoPage() {
   const [locale, setLocale] = useState<Locale>("uz");
+  const [dark, setDark] = useState(false);
   const [category, setCategory] = useState<Category>("All");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [notice, setNotice] = useState("");
   useEffect(() => {
     try {
       const saved = localStorage.getItem("unibos-locale");
-      if (saved === "uz" || saved === "en" || saved === "ru") setLocale(saved);
+      if (saved === "uz" || saved === "en" || saved === "ru") {
+        setLocale(saved);
+        document.documentElement.lang = saved;
+      }
+      setDark(localStorage.getItem("unibos-theme") === "dark");
     } catch {
       /* keep Uzbek default */
     }
@@ -144,12 +149,15 @@ export default function GuestDemoPage() {
   );
 
   return (
-    <main className="demo-page" lang={locale}>
+    <main
+      className={`demo-page guest-page${dark ? " theme-dark" : ""}`}
+      lang={locale}
+    >
       <div className="demo-banner">{t.banner}</div>
       <header className="demo-topbar">
         <Link className="demo-topbrand" href="/">
           <Image
-            src="/brand/mark-light.svg"
+            src="/brand/mark-dark.svg"
             alt=""
             width={25}
             height={29}
@@ -157,9 +165,57 @@ export default function GuestDemoPage() {
           />
           UniBOS <span className="ui-badge">{t.demo}</span>
         </Link>
-        <Link className="demo-toplinks" href="/demo/workspace">
-          {t.workspace} ›
-        </Link>
+        <nav className="guest-top-actions">
+          <label className="sr-only" htmlFor="guest-locale">
+            {locale === "uz" ? "Til" : locale === "ru" ? "Язык" : "Language"}
+          </label>
+          <select
+            id="guest-locale"
+            value={locale}
+            onChange={(event) => {
+              const next = event.target.value as Locale;
+              setLocale(next);
+              document.documentElement.lang = next;
+              try {
+                localStorage.setItem("unibos-locale", next);
+              } catch {
+                /* locale remains active for this page */
+              }
+            }}
+            aria-label={
+              locale === "uz"
+                ? "Tilni tanlang"
+                : locale === "ru"
+                  ? "Выберите язык"
+                  : "Choose language"
+            }
+          >
+            <option value="uz">UZ</option>
+            <option value="ru">RU</option>
+            <option value="en">EN</option>
+          </select>
+          <button
+            type="button"
+            className="guest-theme-toggle"
+            aria-label={dark ? "Light mode" : "Dark mode"}
+            onClick={() =>
+              setDark((current) => {
+                const next = !current;
+                try {
+                  localStorage.setItem("unibos-theme", next ? "dark" : "light");
+                } catch {
+                  /* theme remains active for this page */
+                }
+                return next;
+              })
+            }
+          >
+            {dark ? "☼" : "◐"}
+          </button>
+          <Link className="demo-toplinks" href="/demo/workspace">
+            {t.workspace} ›
+          </Link>
+        </nav>
       </header>
       <div className="guest-layout">
         <div className="guest-hero" role="img" aria-label={t.decorative} />

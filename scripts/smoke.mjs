@@ -86,7 +86,10 @@ try {
   const websiteUrl = `http://127.0.0.1:${websitePort}`;
   const page = await waitFor(websiteUrl, website);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /Bitta platforma\./);
+  assert.match(
+    await page.text(),
+    /Restoran biznesi uchun yagona raqamli platforma/,
+  );
   assert.equal(page.headers.get("x-powered-by"), null);
   assert.equal(page.headers.get("x-content-type-options"), "nosniff");
   assert.match(
@@ -99,6 +102,18 @@ try {
     await readFile("assets/brand/wordmark-light.svg", "utf8"),
   );
   assert.equal((await get(`${websiteUrl}/.env`)).status, 404);
+  for (const route of [
+    "/solutions",
+    "/pricing",
+    "/about",
+    "/contact",
+    "/demo/guest",
+    "/demo/dashboard",
+    "/demo/super-admin",
+    "/demo/workspace",
+  ]) {
+    assert.equal((await get(`${websiteUrl}${route}`)).status, 200, route);
+  }
   console.log(
     "PASS: website/assets/headers, live API -> real PostgreSQL+Redis -> ready200, unavailable dependencies -> safe503, unknown domain route404",
   );

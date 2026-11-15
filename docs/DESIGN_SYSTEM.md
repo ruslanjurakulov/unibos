@@ -18,9 +18,9 @@ Never shift the approved core palette. Use neutral tints as supporting interface
 
 ## Two interface directions
 
-**Modern Luxury** is for the public site and guest experience. Use editorial hierarchy, spacious layouts, warm ivory, forest green, measured gold accents, Playfair Display headings and Inter text. Restaurant imagery in the current demo is a locally generated CSS illustration, clearly labeled as a preview; it is not customer photography.
+**Modern Luxury** is for the public site and guest experience. Use editorial hierarchy, spacious layouts, warm ivory, forest green, measured gold accents, Playfair Display headings and Inter text. The home, solutions, QR menu, pricing, about and contact surfaces follow the owner's supplied JPG references. Cropped local visual assets are derived from those references and remain illustrative demo artwork, not customer photography.
 
-**Global Corporate** is for the business workspace and later operations modules. Prioritize dense but legible business information, compact tables, clear states, low-friction actions, responsive layouts and both light and dark themes. The current workspace supports organization and branch setup from the P2 API; menus, orders, staff scheduling, analytics and billing are outside this release.
+**Global Corporate** is for the business workspace and later operations modules. Prioritize dense but legible business information, compact tables, clear states, low-friction actions, responsive layouts and both light and dark themes. The dashboard and Super Admin screens are clearly labeled sample demos; the authenticated workspace supports organization and branch setup from the P2 API. Menus, orders, staff scheduling, analytics and billing remain outside the P3 production API scope.
 
 ## Typography and assets
 
@@ -33,11 +33,11 @@ Never shift the approved core palette. Use neutral tints as supporting interface
 
 Website primitives live in `apps/website/app/globals.css` while the site is still one Next.js application: `.ui-button`, `.ui-card`, `.ui-badge`, `.ui-input`, and shared focus-visible styles. Keep semantics in the consuming React component; CSS classes alone do not provide an accessible name or role. Split into `packages/design-system` when a second application consumes the same components.
 
-Use visible focus, associated labels, descriptive control names, status announcements, reduced-motion support, minimum target sizes and responsive layout changes. Avoid color-only status communication. Design at narrow phone widths first, then tablet and desktop. The Business Workspace includes a manually switchable light/dark mode; marketing and guest pages use the approved light Modern Luxury direction.
+Use visible focus, associated labels, descriptive control names, status announcements, reduced-motion support, minimum target sizes and responsive layout changes. Avoid color-only status communication. Design at narrow phone widths first, then tablet and desktop. Marketing, guest and corporate demo screens include a manually switchable light/dark mode. Preserve the distinct Modern Luxury and Global Corporate directions while sharing brand tokens.
 
 ## Localization
 
-Uzbek Latin is the default public-site language. English and Russian are available on the marketing site and guest menu; they share a language selection through browser-local storage. Do not infer translated business, legal, plan, security or performance claims. Authentication and the current workspace are English-only preview screens; do not represent those as fully localized.
+Uzbek Latin is the default public-site language. English and Russian are available on all marketing and demo pages; selection persists through browser-local storage. Do not infer translated business, legal, plan, security or performance claims. Authentication and the authenticated business workspace remain English-only preview screens; do not represent those as fully localized.
 
 ## Demo and product claims
 
