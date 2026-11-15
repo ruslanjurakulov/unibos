@@ -1,20 +1,16 @@
-# API foundation
+# API security foundation
 
-NestJS/TypeScript infrastructure scaffold; not a business API or production deployment.
+NestJS/TypeScript local API with infrastructure health, verified identity and scoped organization/branch/membership/audit routes. The exact P2 contract, recent-MFA requirements, RLS roles, migration order and unimplemented production surfaces are documented in docs/P2_SECURITY.md.
 
-- `GET /health/live` returns200 without accessing dependencies.
-- `GET /health/ready` performs real PostgreSQL `SELECT1` and Redis `PING`, returns200 only when both succeed, otherwise sanitized503. Dependency errors/URLs/credentials are not returned.
-- Unknown routes return sanitized404; there are no tenant, identity, ordering or payment routes. No CORS origins are enabled.
-- Local default binding is127.0.0.1:3001. Database/Redis credentials must be explicitly configured. Production TLS validation is configuration hygiene, not production-readiness certification.
-- PostgreSQL connection/query and Redis connection/command probes have bounded timeouts; application shutdown closes the pool. Readiness endpoints should remain inside the infrastructure network before deployment.
-- Structured JSON logs accept only fixed event/status/dependency fields and timestamp; no request bodies, paths, config, URLs or raw errors. Full OpenTelemetry exporters, alerting and production log transport are not implemented.
+- GET /health/live is independent of dependencies. GET /health/ready performs actual bounded PostgreSQL/Redis checks and returns200 or sanitized503.
+- When AUTH_ENABLED is validated, main creates separate restricted identity/application pools. Startup rejects administrative, owning, inherited and cross-scope privileges. No migration credential is used by request handlers.
+- Exact trusted origins,16KiB bodies, bounded timeouts, input/role allowlists, verified sessions, recent-MFA gates and transaction-local database policies protect the P2 routes. Unknown/foreign scopes fail closed. Ordering/payment/Super Admin endpoints are not present.
+- Local default binding is127.0.0.1:3001. Headers disable caching/type sniffing; raw driver errors, stack traces, connection strings and secrets are never returned. Logs accept fixed event/status/dependency fields only.
 
-At repository root build the runtime package before the API: `npm run build -w @unibos/runtime && npm run build -w @unibos/api`. `npm run start -w @unibos/api` loads the ignored root `.env` if present. `npm run dev -w @unibos/api` watches compiled `dist`; after editing source rerun the build (source transpilation watching is not supplied).
+At root use npm run setup:local, npm run infra:up, npm run build and npm run db:migrate before starting. Start/dev load ignored .env.runtime, which excludes bootstrap/migration keys. Dev watches compiled dist only; rebuild after source edits. No source transpilation watcher or deployment is promised.
 
-`npm test -w @unibos/api` builds and executes actual loopback HTTP tests and real refused-connection probe tests without touching business data. Root smoke tests separately verify healthy disposable local infrastructure. PostgreSQL/Redis local credentials are development-only; restricted roles, RLS, authentication and tenant negative tests are P2 prerequisites before any business-data endpoints.
+Unit/HTTP tests run without infrastructure via npm test. Root npm run test:security exercises real authenticated identity/MFA/RLS workflows in owned disposable databases. Root npm run test:smoke checks the built applications and real healthy/degraded infrastructure. The workspace test:integration is an additional health-probe-only test, not a replacement for the full identity/tenant suite.
 
 ## Manual tracing
 
-A local OpenTelemetry tracer initializes before the HTTP application accepts requests. It creates a manual `api.readiness` span with only a fixed service/route and enum dependency status attributes; it does not record URLs, credentials, raw exceptions, requests or response bodies. Default export is disabled. Set `OTEL_ENABLED=true` to enable a console exporter for local inspection; explicit `false` disables it and unknown values fail configuration. Provider shutdown flushes/closes the processor with the application. There is no global provider, auto-instrumentation, OTLP collector, hosted backend, alerting or production-monitoring claim. The in-memory-exporter test checks real HTTP readiness-failure spans and absence of credential/error data.
-
-With disposable local services running, `npm run test:integration -w @unibos/api` loads the ignored root.env and tests actual200 readiness against authenticated PostgreSQL/Redis. It rejects production mode and nonlocal service URLs. Normal unit/HTTP tests do not require these services.
+A local OpenTelemetry tracer emits only api.readiness spans with fixed service/route and enum dependency status attributes. Default export is disabled; OTEL_ENABLED=true opts into console output. It does not collect URLs, credentials, raw exceptions, request/response bodies or global auto-instrumentation. Shutdown closes the provider. In-memory exporter tests verify the safe actual failure span. Hosted telemetry, alerts, production log transport and recovery monitoring remain later release gates.

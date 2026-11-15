@@ -56,11 +56,92 @@ test("production requires verified database TLS and Redis TLS", () => {
       }),
     /REDIS_URL must use TLS/,
   );
-  const config = readRuntimeConfig({
-    ...base,
+  assert.throws(
+    () =>
+      readRuntimeConfig({
+        ...base,
+        NODE_ENV: "production",
+        DATABASE_URL: databaseUrl,
+        REDIS_URL: base.REDIS_URL.replace("redis:", "rediss:"),
+      }),
+    /AUTH_ENABLED/,
+  );
+});
+
+const securityBase = {
+  ...base,
+  AUTH_ENABLED: "true",
+  AUTH_ALLOW_SIGNUP: "true",
+  BETTER_AUTH_SECRET: "synthetic-secret-for-configuration-tests-only",
+  AUTH_BASE_URL: "http://127.0.0.1:3001",
+  AUTH_TRUSTED_ORIGINS: "http://127.0.0.1:3001,http://127.0.0.1:3000",
+  DATABASE_URL: "postgresql://unibos_app:synthetic-test-only@127.0.0.1/unibos",
+  AUTH_DATABASE_URL:
+    "postgresql://unibos_auth:synthetic-test-only@127.0.0.1/unibos",
+};
+
+test("identity configuration is immutable, exact-origin and uses separate roles", () => {
+  const config = readRuntimeConfig(securityBase);
+  assert.ok(Object.isFrozen(config.security));
+  assert.ok(Object.isFrozen(config.security.trustedOrigins));
+  assert.equal(config.security.enableSignup, true);
+  assert.deepEqual(config.security.trustedOrigins, [
+    "http://127.0.0.1:3001",
+    "http://127.0.0.1:3000",
+  ]);
+});
+
+test("unsafe auth configuration fails without credential disclosure", () => {
+  for (const patch of [
+    { AUTH_ENABLED: "yes" },
+    { AUTH_ALLOW_SIGNUP: "yes" },
+    { BETTER_AUTH_SECRET: "short" },
+    { AUTH_BASE_URL: undefined },
+    { AUTH_BASE_URL: "https://trusted.invalid/callback" },
+    { AUTH_BASE_URL: "https://user:password@trusted.invalid" },
+    { AUTH_TRUSTED_ORIGINS: "https://*.example.invalid" },
+    { AUTH_TRUSTED_ORIGINS: "http://external.example.invalid" },
+    { AUTH_TRUSTED_ORIGINS: "https://trusted.invalid#fragment" },
+    { AUTH_DATABASE_URL: securityBase.DATABASE_URL },
+    { DATABASE_URL: base.DATABASE_URL },
+  ])
+    assert.throws(
+      () => readRuntimeConfig({ ...securityBase, ...patch }),
+      (error) => {
+        assert.ok(!error.message.includes("synthetic-test-only"));
+        assert.ok(!error.message.includes("password@"));
+        return true;
+      },
+    );
+});
+
+test("production identity rejects local origins, unverified TLS and unverified signup", () => {
+  const production = {
+    ...securityBase,
     NODE_ENV: "production",
-    DATABASE_URL: databaseUrl,
+    AUTH_ALLOW_SIGNUP: "false",
+    DATABASE_URL: `${securityBase.DATABASE_URL}?sslmode=verify-full`,
+    AUTH_DATABASE_URL: `${securityBase.AUTH_DATABASE_URL}?sslmode=verify-full`,
     REDIS_URL: base.REDIS_URL.replace("redis:", "rediss:"),
-  });
-  assert.equal(config.mode, "production");
+    AUTH_BASE_URL: "https://api.example.invalid",
+    AUTH_TRUSTED_ORIGINS: "https://workspace.example.invalid",
+  };
+  assert.equal(readRuntimeConfig(production).security.mode, "production");
+  assert.throws(
+    () => readRuntimeConfig({ ...production, AUTH_ALLOW_SIGNUP: "true" }),
+    /verified email/,
+  );
+  assert.throws(
+    () =>
+      readRuntimeConfig({ ...production, AUTH_BASE_URL: "http://127.0.0.1" }),
+    /AUTH_BASE_URL/,
+  );
+  assert.throws(
+    () =>
+      readRuntimeConfig({
+        ...production,
+        AUTH_DATABASE_URL: securityBase.AUTH_DATABASE_URL,
+      }),
+    /verified TLS/,
+  );
 });

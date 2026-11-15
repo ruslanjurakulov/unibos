@@ -6,3 +6,6 @@ Client price tampering -> server price snapshot and tax rules; spoofed webhooks 
 
 ## Operational targets
 MVP RPO <=15 min and RTO <=60 min, 99.9% availability target subject to tests/infrastructure. Incident playbook: contain, revoke, preserve evidence, restore, reconcile, notify as legally required. Data minimization, retention policy, export/deletion subject to fiscal retention and local law. No production personal data location decision before legal review.
+
+## P2 implementation evidence
+See docs/P2_SECURITY.md for actual local identity/MFA/session, restricted-role RLS, scoped permission/audit and shared atomic rate-limit implementation and tests. These results do not certify production controls or the future payment/storage/job surfaces described above. There is no Super Admin endpoint or default cross-tenant support access.

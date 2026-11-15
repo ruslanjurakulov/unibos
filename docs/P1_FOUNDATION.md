@@ -6,6 +6,10 @@ Local-only TypeScript/npm workspace monorepo: `apps/website` (Next.js), `apps/ap
 
 No provider account, public application deployment, customer database, payment flow or production resource is created. Identity, organizations, tenant tables, migrations, restricted app roles/RLS, cross-tenant tests and authorization remain P2 requirements before any business endpoint. The development bootstrap database role is privileged; never use this local configuration for tenant or production data.
 
+## Historical P1 setup
+
+P2 changes the runtime/migration credential split and adds migrations before API startup. Use docs/P2_SECURITY.md for current commands; P1-only instructions below are historical.
+
 ## Reproduce on Linux x64 / Node24
 
 1. Install Node24.22.1/npm11 and Docker with Compose. `npm ci` installs pinned packages from package-lock.json.

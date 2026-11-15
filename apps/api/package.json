@@ -5,10 +5,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "start": "node --env-file-if-exists=../../.env dist/main.js",
-    "dev": "node --env-file-if-exists=../../.env --watch dist/main.js",
+    "start": "node --env-file-if-exists=../../.env.runtime dist/main.js",
+    "dev": "node --env-file-if-exists=../../.env.runtime --watch dist/main.js",
     "test": "npm run build && node --test test/*.test.mjs",
-    "test:integration": "npm run build && node --env-file=../../.env --test test/infrastructure.integration.mjs"
+    "test:integration": "npm run build && node --env-file=../../.env.runtime --test test/infrastructure.integration.mjs"
   },
   "dependencies": {
     "@nestjs/common": "12.5.0",
@@ -20,7 +20,9 @@
     "pg": "8.23.1",
     "redis": "6.3.1",
     "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2"
+    "rxjs": "7.8.2",
+    "@unibos/security": "*",
+    "@unibos/database": "*"
   },
   "devDependencies": {
     "@types/pg": "8.23.1"
