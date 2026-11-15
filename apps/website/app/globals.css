@@ -2617,6 +2617,9 @@ button:focus-visible {
 .p3-solutions-hero .p3-integrity-note {
   background: #fffdf8;
 }
+.p3-solutions-hero .p3-integrity-note p {
+  color: #66766b;
+}
 .p3-integrity-note {
   display: flex;
   gap: 14px;
