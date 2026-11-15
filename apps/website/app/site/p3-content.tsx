@@ -130,7 +130,7 @@ const copy = {
         ],
         [
           "Narxlar tasdiqlanganmi?",
-          "Yo‘q. Ko‘rsatilgan raqamlar JPG maketidan olingan vizual namuna va haqiqiy taklif emas. Yillik narx tasdiqlanmagan.",
+          "Yo‘q. BUSINESS_MODEL.md’dagi Free, Starter, Business va Pro summalari ichki gipoteza, tasdiqlangan taklif emas. Basic rejasi unga moslashtirilmagan; tarkib, billing va yillik narxlar egasi qarorini kutmoqda.",
         ],
         [
           "Qanday qurilmalar kerak?",
@@ -403,7 +403,7 @@ const copy = {
         ],
         [
           "Are the prices approved?",
-          "No. The displayed values are visual samples from the JPG references, not a commercial offer. Annual pricing is unconfirmed.",
+          "No. The Free, Starter, Business and Pro amounts in BUSINESS_MODEL.md are internal hypotheses, not an approved offer. Basic has no defined mapping; plan contents, billing and annual pricing need the owner's decision.",
         ],
         [
           "Which devices are supported?",
@@ -675,7 +675,7 @@ const copy = {
         ],
         [
           "Цены утверждены?",
-          "Нет. Показанные суммы — визуальный пример из JPG-макетов, а не коммерческое предложение. Годовые цены не подтверждены.",
+          "Нет. Суммы Free, Starter, Business и Pro из BUSINESS_MODEL.md — внутренние гипотезы, а не утверждённое предложение. Для Basic нет соответствия; состав тарифа, биллинг и годовая цена требуют решения владельца.",
         ],
         [
           "Какие устройства поддерживаются?",
@@ -1059,7 +1059,12 @@ export function P3ExtendedPage({
         <Header eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
         <div className={styles.faqList}>
           {t.items.map(([question, answer], index) => (
-            <details id={index === 6 ? "security" : undefined} key={question}>
+            <details
+              id={
+                index === 4 ? "pricing" : index === 6 ? "security" : undefined
+              }
+              key={question}
+            >
               <summary>
                 <span>{question}</span>
                 <b aria-hidden="true">+</b>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Locale = "uz" | "en" | "ru";
 type Category = "All" | "Fresh" | "Mains";
@@ -29,6 +29,17 @@ const copy = {
     ],
     add: "Demo savatga qo‘shish",
     cart: "Demo savat",
+    cartTitle: "Savat tarkibi",
+    cartEmpty: "Savat hozircha bo‘sh.",
+    cartDemoNotice: "Demo narxlari. Buyurtma yoki to‘lov yuborilmaydi.",
+    unitPrice: "Birlik narxi",
+    lineTotal: "Jami",
+    total: "Jami summa",
+    decrease: "Miqdorni kamaytirish",
+    increase: "Miqdorni oshirish",
+    remove: "Savatdan olib tashlash",
+    closeCart: "Savatni yopish",
+    continue: "Menyuga qaytish",
     item: "taom",
     items: "taom",
     preview: "Savatni ko‘rish",
@@ -55,6 +66,17 @@ const copy = {
     ],
     add: "Add to demo cart",
     cart: "Demo cart",
+    cartTitle: "Cart contents",
+    cartEmpty: "Your cart is empty.",
+    cartDemoNotice: "Demo prices. No order or payment is submitted.",
+    unitPrice: "Unit price",
+    lineTotal: "Line total",
+    total: "Total",
+    decrease: "Decrease quantity",
+    increase: "Increase quantity",
+    remove: "Remove from cart",
+    closeCart: "Close cart",
+    continue: "Continue browsing",
     item: "item",
     items: "items",
     preview: "Preview cart",
@@ -80,6 +102,17 @@ const copy = {
     ],
     add: "Добавить в демо-корзину",
     cart: "Демо-корзина",
+    cartTitle: "Состав корзины",
+    cartEmpty: "Корзина пока пуста.",
+    cartDemoNotice: "Демо-цены. Заказ или оплата не отправляются.",
+    unitPrice: "Цена за единицу",
+    lineTotal: "Сумма",
+    total: "Итого",
+    decrease: "Уменьшить количество",
+    increase: "Увеличить количество",
+    remove: "Удалить из корзины",
+    closeCart: "Закрыть корзину",
+    continue: "Вернуться в меню",
     item: "блюдо",
     items: "блюд",
     preview: "Посмотреть корзину",
@@ -103,6 +136,17 @@ const copy = {
     details: string[];
     add: string;
     cart: string;
+    cartTitle: string;
+    cartEmpty: string;
+    cartDemoNotice: string;
+    unitPrice: string;
+    lineTotal: string;
+    total: string;
+    decrease: string;
+    increase: string;
+    remove: string;
+    closeCart: string;
+    continue: string;
     item: string;
     items: string;
     preview: string;
@@ -125,7 +169,10 @@ export default function GuestDemoPage() {
   const [dark, setDark] = useState(false);
   const [category, setCategory] = useState<Category>("All");
   const [cart, setCart] = useState<Record<string, number>>({});
+  const [cartOpen, setCartOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const cartDialogRef = useRef<HTMLDialogElement>(null);
+  const cartTriggerRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     try {
       const saved = localStorage.getItem("unibos-locale");
@@ -147,10 +194,40 @@ export default function GuestDemoPage() {
     [category],
   );
   const count = Object.values(cart).reduce((sum, value) => sum + value, 0);
+  const cartProducts = products.filter(
+    (product) => (cart[product.id] ?? 0) > 0,
+  );
   const total = products.reduce(
     (sum, product) => sum + product.price * (cart[product.id] ?? 0),
     0,
   );
+
+  useEffect(() => {
+    const dialog = cartDialogRef.current;
+    if (!dialog) return;
+    if (cartOpen && !dialog.open) dialog.showModal();
+    if (!cartOpen && dialog.open) dialog.close();
+  }, [cartOpen]);
+
+  function changeQuantity(id: string, change: number) {
+    setCart((current) => {
+      const nextQuantity = Math.max(0, (current[id] ?? 0) + change);
+      if (nextQuantity === 0) {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      }
+      return { ...current, [id]: nextQuantity };
+    });
+  }
+
+  function removeProduct(id: string) {
+    setCart((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
 
   return (
     <main
@@ -297,12 +374,136 @@ export default function GuestDemoPage() {
               {t.cart} · {count} {count === 1 ? t.item : t.items} · $
               {total.toFixed(2)}
             </span>
-            <button onClick={() => setNotice(t.unavailable)}>
+            <button
+              ref={cartTriggerRef}
+              type="button"
+              aria-haspopup="dialog"
+              aria-expanded={cartOpen}
+              aria-controls="guest-cart-dialog"
+              onClick={() => setCartOpen(true)}
+            >
               {t.preview}
             </button>
           </div>
         </div>
       </div>
+      <dialog
+        id="guest-cart-dialog"
+        ref={cartDialogRef}
+        className="guest-cart-dialog"
+        aria-labelledby="guest-cart-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          setCartOpen(false);
+        }}
+        onClose={() => setCartOpen(false)}
+        onKeyDown={(event) => {
+          if (event.key !== "Tab") return;
+          const focusable = Array.from(
+            event.currentTarget.querySelectorAll<HTMLElement>(
+              'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            ),
+          );
+          if (focusable.length === 0) return;
+          const first = focusable[0];
+          const last = focusable[focusable.length - 1];
+          if (!first || !last) return;
+          if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+          } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+          }
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget) setCartOpen(false);
+        }}
+      >
+        <section className="guest-cart-panel">
+          <header className="guest-cart-heading">
+            <div>
+              <p>{t.cart}</p>
+              <h2 id="guest-cart-title">{t.cartTitle}</h2>
+            </div>
+            <button
+              type="button"
+              className="guest-cart-close"
+              autoFocus
+              aria-label={t.closeCart}
+              onClick={() => setCartOpen(false)}
+            >
+              ×
+            </button>
+          </header>
+          <p className="guest-cart-notice">{t.cartDemoNotice}</p>
+          {cartProducts.length === 0 ? (
+            <p className="guest-cart-empty" role="status">
+              {t.cartEmpty}
+            </p>
+          ) : (
+            <ul className="guest-cart-items">
+              {cartProducts.map((product) => {
+                const index = products.findIndex(
+                  (candidate) => candidate.id === product.id,
+                );
+                const quantity = cart[product.id] ?? 0;
+                return (
+                  <li className="guest-cart-line" key={product.id}>
+                    <div className="guest-cart-product">
+                      <b>{t.names[index]}</b>
+                      <span>
+                        {t.unitPrice}: ${product.price.toFixed(2)}
+                      </span>
+                      <strong>
+                        {t.lineTotal}: ${(product.price * quantity).toFixed(2)}
+                      </strong>
+                    </div>
+                    <div className="guest-cart-controls">
+                      <button
+                        type="button"
+                        aria-label={`${t.decrease}: ${t.names[index]}`}
+                        onClick={() => changeQuantity(product.id, -1)}
+                      >
+                        −
+                      </button>
+                      <output aria-label={`${t.names[index]} quantity`}>
+                        {quantity}
+                      </output>
+                      <button
+                        type="button"
+                        aria-label={`${t.increase}: ${t.names[index]}`}
+                        onClick={() => changeQuantity(product.id, 1)}
+                      >
+                        +
+                      </button>
+                      <button
+                        type="button"
+                        className="guest-cart-remove"
+                        aria-label={`${t.remove}: ${t.names[index]}`}
+                        onClick={() => removeProduct(product.id)}
+                      >
+                        {t.remove}
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          <footer className="guest-cart-summary">
+            <span>{t.total}</span>
+            <strong>${total.toFixed(2)}</strong>
+          </footer>
+          <button
+            type="button"
+            className="guest-cart-continue"
+            onClick={() => setCartOpen(false)}
+          >
+            {t.continue}
+          </button>
+        </section>
+      </dialog>
     </main>
   );
 }

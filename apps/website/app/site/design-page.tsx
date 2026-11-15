@@ -22,6 +22,8 @@ type Page =
   | "dashboard"
   | "admin";
 
+const pricingPlanOrder = ["Basic", "Business", "Pro"];
+
 const labels = {
   uz: {
     nav: ["Asosiy", "Yechimlar", "Narxlar", "Demo", "Biz haqimizda"],
@@ -72,15 +74,44 @@ const labels = {
     pricingLead:
       "Obuna paketlari va narxlar tasdiqlanishi bilan e’lon qilinadi.",
     pricingSoon: "Tez kunda",
-    pricingDemoNote: "DEMO NARXLARI · Faqat vizual namuna, haqiqiy tarif emas.",
-    pricingDemo: "DEMO · real tarif emas",
+    pricingDemoNote:
+      "TARIF GIPOTEZALARI · Tasdiqlanmagan, sotuv yoki billing yo‘q.",
     billingMonthly: "Oyma-oy",
     billingYearly: "Yillik",
-    yearlyPending: "Yillik demo qiymat tasdiqlanmagan",
-    pricingFeatures: [
-      "Asosiy funksiyalar",
-      "Filial boshqaruvi",
-      "Jamoa va rollar",
+    yearlyPending: "Yillik narx tasdiqlanmagan",
+    pricingCta: "Tarif holatini ko‘rish",
+    pricingPlans: [
+      {
+        name: "Basic",
+        monthly: "Narx ko‘rsatilmagan",
+        monthlyNote:
+          "BUSINESS_MODEL.md hujjatida Basic tarifi yoki uning narxi yo‘q.",
+        status: "TARKIBI TASDIQLANMAGAN",
+        features: [
+          "Basic va Starter o‘rtasidagi moslik egasi tomonidan aniqlanishi kerak.",
+          "Tarkib, huquqlar va billing tasdiqlanmagan.",
+        ],
+      },
+      {
+        name: "Pro",
+        monthly: "499 000 UZS",
+        monthlyNote: "Oyiga · BUSINESS_MODEL.md’dagi tasdiqlanmagan gipoteza.",
+        status: "TAKLIF · KELAJAK GIPOTEZASI",
+        features: [
+          "Ombor, moliya va xodimlar — hujjatdagi kelajak gipotezalari.",
+          "Bu modullar hozir ishlamaydi; obuna huquqlari va billing yo‘q.",
+        ],
+      },
+      {
+        name: "Business",
+        monthly: "249 000 UZS",
+        monthlyNote: "Oyiga · BUSINESS_MODEL.md’dagi tasdiqlanmagan gipoteza.",
+        status: "TAKLIF · TASDIQLANMAGAN",
+        features: [
+          "Buyurtma, kassir, oshxona va analitika — tarif gipotezasi.",
+          "Modullar hozir ishlamaydi; to‘lov/fiscal faqat tayyor bo‘lganda.",
+        ],
+      },
     ],
     aboutTitle: "Restoranlar uchun texnologik hamkor",
     aboutLead:
@@ -166,12 +197,47 @@ const labels = {
     pricingTitle: "A plan for your business",
     pricingLead: "Plans and pricing will be published once they are confirmed.",
     pricingSoon: "Coming soon",
-    pricingDemoNote: "DEMO PRICES · Visual sample only, not actual pricing.",
-    pricingDemo: "DEMO · not an actual rate",
+    pricingDemoNote:
+      "PRICING HYPOTHESES · Unapproved; no sales or billing is available.",
     billingMonthly: "Monthly",
     billingYearly: "Annual",
-    yearlyPending: "Annual demo value not confirmed",
-    pricingFeatures: ["Core features", "Location management", "Team and roles"],
+    yearlyPending: "Annual price is not approved",
+    pricingCta: "Review pricing status",
+    pricingPlans: [
+      {
+        name: "Basic",
+        monthly: "No price listed",
+        monthlyNote:
+          "BUSINESS_MODEL.md does not define a Basic plan or its price.",
+        status: "CONTENTS NOT APPROVED",
+        features: [
+          "The owner must decide whether Basic maps to Starter.",
+          "Contents, entitlements and billing are unapproved.",
+        ],
+      },
+      {
+        name: "Pro",
+        monthly: "UZS 499,000",
+        monthlyNote:
+          "Per month · unapproved hypothesis from BUSINESS_MODEL.md.",
+        status: "PROPOSED · FUTURE HYPOTHESIS",
+        features: [
+          "Inventory, finance and staff are future hypotheses in the document.",
+          "These modules are not live; there are no plan entitlements or billing.",
+        ],
+      },
+      {
+        name: "Business",
+        monthly: "UZS 249,000",
+        monthlyNote:
+          "Per month · unapproved hypothesis from BUSINESS_MODEL.md.",
+        status: "PROPOSED · NOT APPROVED",
+        features: [
+          "Orders, cashier, kitchen and analytics are plan hypotheses.",
+          "Modules are not live; payment/fiscal is only for when ready.",
+        ],
+      },
+    ],
     aboutTitle: "A technology partner for restaurants",
     aboutLead:
       "UniBOS is a modern platform built to digitize restaurant and café operations, improve efficiency and support sustainable growth.",
@@ -259,15 +325,42 @@ const labels = {
     pricingLead: "Опубликуем тарифы после утверждения условий и стоимости.",
     pricingSoon: "Скоро",
     pricingDemoNote:
-      "ДЕМО-ЦЕНЫ · Только визуальный образец, это не реальные тарифы.",
-    pricingDemo: "ДЕМО · не реальная цена",
+      "ГИПОТЕЗЫ ТАРИФОВ · Не утверждены; продажа и биллинг недоступны.",
     billingMonthly: "Помесячно",
     billingYearly: "За год",
-    yearlyPending: "Годовая демо-цена не утверждена",
-    pricingFeatures: [
-      "Основные функции",
-      "Управление филиалами",
-      "Команда и роли",
+    yearlyPending: "Годовая цена не утверждена",
+    pricingCta: "Проверить статус тарифов",
+    pricingPlans: [
+      {
+        name: "Basic",
+        monthly: "Цена не указана",
+        monthlyNote: "В BUSINESS_MODEL.md нет тарифа Basic и его цены.",
+        status: "СОСТАВ НЕ УТВЕРЖДЁН",
+        features: [
+          "Владелец должен решить, соответствует ли Basic тарифу Starter.",
+          "Состав, права и биллинг не утверждены.",
+        ],
+      },
+      {
+        name: "Pro",
+        monthly: "499 000 UZS",
+        monthlyNote: "В месяц · неутверждённая гипотеза из BUSINESS_MODEL.md.",
+        status: "ПРЕДЛОЖЕНИЕ · БУДУЩАЯ ГИПОТЕЗА",
+        features: [
+          "Склад, финансы и сотрудники — будущие гипотезы документа.",
+          "Эти модули не работают; прав и биллинга подписки нет.",
+        ],
+      },
+      {
+        name: "Business",
+        monthly: "249 000 UZS",
+        monthlyNote: "В месяц · неутверждённая гипотеза из BUSINESS_MODEL.md.",
+        status: "ПРЕДЛОЖЕНИЕ · НЕ УТВЕРЖДЕНО",
+        features: [
+          "Заказы, касса, кухня и аналитика — гипотеза для тарифа.",
+          "Модули не работают; оплата и фискализация — только после готовности.",
+        ],
+      },
     ],
     aboutTitle: "Технологический партнёр ресторанов",
     aboutLead:
@@ -712,7 +805,6 @@ function Solutions({
 
 function Pricing({ t }: { t: (typeof labels)[Locale] }) {
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
-  const demoPrices = ["349 000", "699 000", "1 299 000"];
 
   return (
     <section className="p3-pricing-page">
@@ -743,47 +835,46 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
             </button>
           </div>
         </div>
-        {["Basic", "Pro", "Business"].map((plan, index) => (
-          <article
-            className={`p3-price-card${index === 1 ? " featured" : ""}`}
-            key={plan}
-          >
-            <span className="p3-plan-name">{plan}</span>
-            <b className="p3-price-pending">
-              {billing === "monthly" ? demoPrices[index] : t.yearlyPending}
-            </b>
-            <small>
-              {billing === "monthly"
-                ? `UZS / ${t.billingMonthly} · ${t.pricingDemo}`
-                : t.pricingDemo}
-            </small>
-            <ul>
-              {t.pricingFeatures.map((feature) => (
-                <li key={feature}>
-                  <span>✓</span>
-                  {feature}
-                </li>
-              ))}
-              {index === 2 && (
-                <li>
-                  <span>✓</span>
-                  {t.moduleNames[5]}
-                </li>
-              )}
-            </ul>
-            <Link
-              href="/contact"
-              className={
-                index === 1
-                  ? "p3-button p3-button-gold"
-                  : "p3-button p3-button-outline"
-              }
+        {[...t.pricingPlans]
+          .sort(
+            (left, right) =>
+              pricingPlanOrder.indexOf(left.name) -
+              pricingPlanOrder.indexOf(right.name),
+          )
+          .map((plan) => (
+            <article
+              className={`p3-price-card${plan.name === "Business" ? " featured" : ""}`}
+              key={plan.name}
             >
-              {t.contactNav}
-              <span>→</span>
-            </Link>
-          </article>
-        ))}
+              <h2 className="p3-plan-name">{plan.name}</h2>
+              <span className="p3-plan-status">{plan.status}</span>
+              <b className="p3-price-pending">
+                {billing === "monthly" ? plan.monthly : t.yearlyPending}
+              </b>
+              <small>
+                {billing === "monthly" ? plan.monthlyNote : t.yearlyPending}
+              </small>
+              <ul>
+                {plan.features.map((feature) => (
+                  <li key={feature}>
+                    <span aria-hidden="true">—</span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="/faq#pricing"
+                className={
+                  plan.name === "Business"
+                    ? "p3-button p3-button-gold"
+                    : "p3-button p3-button-outline"
+                }
+              >
+                {t.pricingCta}
+                <span>→</span>
+              </Link>
+            </article>
+          ))}
       </div>
     </section>
   );
