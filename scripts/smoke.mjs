@@ -86,7 +86,7 @@ try {
   const websiteUrl = `http://127.0.0.1:${websitePort}`;
   const page = await waitFor(websiteUrl, website);
   assert.equal(page.status, 200);
-  assert.match(await page.text(), /business services are not available yet/);
+  assert.match(await page.text(), /Bitta platforma\./);
   assert.equal(page.headers.get("x-powered-by"), null);
   assert.equal(page.headers.get("x-content-type-options"), "nosniff");
   assert.match(
