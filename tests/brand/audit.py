@@ -5,8 +5,8 @@ import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 BRAND = ROOT / 'assets/brand'
-MASTER = 'M8 8L27 18V49C27 66 53 66 53 49V34L72 24V49C72 94 8 94 8 49Z'
-ACCENT = 'M43 12L72 0V17L43 31Z'
+MASTER = 'M31 14H46V59C46 79 74 79 74 59V14H89V59C89 99 31 99 31 59Z'
+BAR = {'x':'53','y':'14','width':'14','height':'40','rx':'2'}
 COLORS = {'#0F3D32', '#F7F4EC', '#C9AE78', '#1F2937', '#000000', '#FFFFFF'}
 files = sorted(BRAND.glob('*.svg')) + sorted((ROOT / 'brand').glob('*.svg'))
 for file in files:
@@ -27,7 +27,8 @@ for file in files:
                 assert value in COLORS, (file, value)
         if 'd' in element.attrib:
             paths.append(element.attrib['d'])
-    assert MASTER in paths and ACCENT in paths, file
+    assert MASTER in paths, file
+    assert any(all(e.attrib.get(k) == v for k,v in BAR.items()) for e in root.iter() if e.tag.endswith("}rect")), file
     assert root.attrib.get('role') == 'img' and root.attrib.get('aria-label') == 'UniBOS', file
     assert root.find('{http://www.w3.org/2000/svg}title').text == 'UniBOS', file
 for legacy, canonical in [('symbol-primary', 'app-icon'), ('app-icon', 'app-icon'), ('favicon', 'favicon')]:

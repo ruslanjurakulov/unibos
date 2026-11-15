@@ -2,35 +2,36 @@
 
 ## Authority and provenance
 
-On 2026-11-15 the owner explicitly confirmed PR #1's diagonal gold-accent U as the final concept, and required the uploaded v1.0 Book/Kit to be aligned. The six original SVG masters at `1770c736ed341b2421ee3fab37d88454fcb3e726` are preserved byte-for-byte. The older central-bar kit, its lettering and palette are superseded references, not alternate approved identities. The v0.1 HTML is a local prototype, not a production asset master; its approximate inline logo is superseded by these masters. It has not been added as application code.
+The owner's latest instruction on 2026-11-15 makes the original uploaded v1.0 Brand Book/Kit the visual authority: the U has a **central vertical gold bar**, not a diagonal accent. The owner explicitly rejected the diagonal variant after an earlier provisional selection. That latest decision supersedes the earlier selection; previous diagonal render/review evidence does not certify this package.
 
-Palette: Forest Green `#0F3D32`, Ivory `#F7F4EC`, Gold Sand `#C9AE78`, Mint Gray `#D8E3DB`, Deep Slate `#1F2937`.
+The six PR SVGs now derive from the original Kit's symbol and outlined wordmark paths, retaining geometry, transforms, proportions and lettering. The uploaded references remain untouched. The v0.1 HTML's diagonal inline logo is superseded; it is not imported as application code. All derivatives and legacy paths use the central-bar master.
+
+Previously explicitly confirmed corporate palette remains: Forest Green `#0F3D32`, Ivory `#F7F4EC`, Gold Sand `#C9AE78`, Mint Gray `#D8E3DB`, Deep Slate `#1F2937`. Original Kit colors `#12382E`, `#F7F4ED` and inconsistent `#B99A65` are normalized to that palette, without changing shapes. Black/white variants are single-ink reproduction exceptions.
 
 ## Files and use
 
-- `mark-light.svg`, `wordmark-light.svg`: forest lettering on light backgrounds, gold accent.
-- `mark-dark.svg`, `wordmark-dark.svg`: ivory lettering on dark backgrounds, gold accent.
-- `mark-monochrome.svg`: slate single-color mark. Black/white variants are explicit single-ink reproduction exceptions to the brand palette.
-- `wordmark-primary.svg`: forest background with ivory lettering and gold accent.
-- `favicon.svg`, `favicon.ico`: intentional forest tile; ICO includes 16/24/32/48/64/128/256 px.
-- `app-icon.svg`, `social-avatar.svg`, `social-banner.svg`: derivatives of unchanged original paths; no external fonts or resources.
-- `png/`: deterministic browser exports. Transparent variants retain alpha; primary/banner/icon variants intentionally have backgrounds.
-- `UniBOS_Brand_Book_v1.1.pdf`: aligned guide; lettering in the guide is rendered from the SVG masters.
-- `UniBOS_Brand_Kit_v1.1.zip`: the versioned distribution package, including all assets and guide.
+- `mark-light.svg`, `wordmark-light.svg`: forest ink on light backgrounds; gold bar.
+- `mark-dark.svg`, `wordmark-dark.svg`: ivory ink on dark backgrounds; gold bar.
+- `mark-monochrome.svg`: slate single-color mark; black/white variants for single-ink use.
+- `wordmark-primary.svg`: forest tile with ivory lettering and gold bar.
+- `favicon.svg`, `favicon.ico`: intentional forest tile; ICO includes16/24/32/48/64/128/256px.
+- `app-icon.svg`, `social-avatar.svg`, `social-banner.svg`: unchanged original paths composed in their intended formats.
+- `png/`: proportional browser exports; transparent variants retain alpha. Primary/banner/icon backgrounds are intentional.
+- `UniBOS_Brand_Book_v1.1.pdf`, `UniBOS_Brand_Kit_v1.1.zip`: aligned guide and distribution package.
 
-Names dark/light describe the intended background, not the ink. For an HTML image supply `alt="UniBOS"`; use empty alt when adjacent text already names the brand. Decorative inline SVGs should be hidden from assistive technology. Inline masters already include a title and accessible name.
+Dark/light names describe intended background, not ink. In HTML use `alt="UniBOS"`, or empty alt when adjacent text already names the brand. Hide purely decorative inline SVGs from assistive technology. Masters have titles and accessible names.
 
-Use the mark at small sizes; the complete wordmark is not readable at a 16 px total width. Proposed minimum mark height: 24 px. Keep at least 8 master units of additional clear space, especially above the gold accent which touches viewBox y=0. Never crop, stretch, redraw, rotate or add effects. Favicon background is intentionally opaque; other master marks and horizontal lockups are transparent unless explicitly labeled primary.
+Proposed minimum mark height24px and horizontal lockup width120px follow the original guide. Smaller favicon exports are technical exports, not a promise of full wordmark readability. Keep clear space of at least one central-bar width around visible artwork. Never crop, stretch, rotate, redraw or add effects. Favicon and explicitly labeled tiles have backgrounds; other mark/wordmark masters are transparent.
 
-## Typography and rights
+## Typography, licenses and rights
 
-Inter for operational UI/body; Playfair Display for premium marketing headings. Upstream license texts were retrieved on 2026-11-15:
+Inter for UI/body; Playfair Display for premium marketing headings. License texts retrieved on2026-11-15:
 
 - https://github.com/rsms/inter/blob/master/LICENSE.txt
 - https://github.com/google/fonts/blob/main/ofl/playfairdisplay/OFL.txt
 
-Both specify SIL OFL 1.1; retain the attached license/copyright notices and observe reserved font names when modifying fonts. No standalone Inter/Playfair font binaries are included. P1/P3 must select pinned WOFF2 builds, preserve notices, self-host language-appropriate subsets, use `font-display: swap`, and measure loading/layout shift. Those runtime results are not claimed here. The existing custom outlined logo paths have no runtime font dependency; font license verification alone is not trademark or logo IP clearance. No registered-trademark symbol; trademark clearance remains pending.
+Both are SIL OFL1.1; retain copyright/license notices and reserved-name restrictions for modifications. No standalone Inter/Playfair binaries are included. P1/P3 must select pinned WOFF2 builds, self-host language-appropriate subsets, use `font-display: swap`, and measure loading/layout shift. No runtime font performance pass is claimed. The original Kit's supplied outlined wordmark requires no external font; font licensing is not logo/trademark IP clearance.
 
-Evidence and remaining gates: `../../docs/P0_REVIEW.md`. No public deployment or paid operation is authorized.
+The PDF embeds DejaVu Sans solely for portable guide text; its license is in `Guide-Font-LICENSE.txt`. This does not change product typography. Logos in the PDF are proportional renders of canonical outlines. No registered-trademark symbol; trademark clearance is pending.
 
-The PDF guide embeds DejaVu Sans solely for portable document text; this is not a change to product typography. Its license is included in `Guide-Font-LICENSE.txt`. The logo itself is rendered from the canonical outlines.
+Review, evidence and blockers: `../../docs/P0_REVIEW.md`. No public deployment or paid operation authorized.

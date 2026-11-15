@@ -1,5 +1,5 @@
 # Legacy brand paths
 
-These three SVG paths are retained for compatibility with existing references. They now use the owner-confirmed diagonal-accent geometry and palette from `assets/brand/`. The previous central-bar identity and v1.0 palette are superseded by the owner's 2026-11-15 instruction.
+These three paths remain for compatibility. They use the owner's final original central-bar U and palette from `assets/brand/`, aligned to the uploaded Brand Book/Kit. The diagonal variant is superseded by the latest2026-11-15 instruction.
 
-Canonical masters, aligned Book/Kit, PNG/ICO exports and usage rules: [assets/brand/README.md](../assets/brand/README.md). Add new references there; do not maintain an independent identity in this directory. No trademark registration or public release is claimed.
+Canonical masters, aligned Book/Kit, PNG/ICO exports and usage: [assets/brand/README.md](../assets/brand/README.md). Do not maintain a separate identity here. No trademark registration or public release claimed.

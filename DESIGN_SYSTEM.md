@@ -1,7 +1,7 @@
 # UniBOS Dual Design System
 
 ## Founder-approved visual direction (2026-11-15)
-Original U symbol with gold accent, UniBOS wordmark, forest/ivory/gold identity. The approved concept is a visual reference, not a production asset or trademark clearance. Do not use the registered trademark symbol before registration. Slogan: One platform. Your entire business.
+Original U symbol with central vertical gold bar, UniBOS wordmark, forest/ivory/gold identity. The approved concept is a visual reference, not a production asset or trademark clearance. Do not use the registered trademark symbol before registration. Slogan: One platform. Your entire business.
 
 | Brand token | Hex |
 |---|---|
@@ -19,6 +19,6 @@ Shared original UniBOS wordmark, semantic tokens, responsive components, error/l
 
 ## Acceptance and outstanding assets
 - Preserve the approved brand direction; changes require founder agreement.
-- Owner confirmed the diagonal-accent logo on 2026-11-15. Canonical outlined SVG masters and aligned v1.1 Book/Kit are in `assets/brand/`; the uploaded central-bar v1.0 identity is superseded. See its README for provenance, fonts, accessibility and usage. Trademark/IP clearance remains pending.
+- Owner finally confirmed the original central-bar logo from the uploaded Brand Book/Kit on 2026-11-15; the diagonal variant is superseded. Canonical outlined SVG masters and aligned v1.1 Book/Kit are in `assets/brand/`; the uploaded v1.0 geometry, proportions and outlined lettering are the visual authority; older color values are normalized to the explicitly approved palette. See its README for provenance, fonts, accessibility and usage. Trademark/IP clearance remains pending.
 - Compare actual responsive screenshots to approved concepts, and validate accessibility, keyboard interaction and functional states.
 - No public deployment or disclosure without explicit owner approval. Follow CONFIDENTIALITY.md.

@@ -1,71 +1,86 @@
 [
   {
-    "file": "mark-dark.svg",
-    "bytes": 254,
-    "tags": [
-      "path",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "0 0 80 86"
-  },
-  {
-    "file": "mark-monochrome.svg",
-    "bytes": 254,
-    "tags": [
-      "path",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "0 0 80 86"
-  },
-  {
-    "file": "wordmark-dark.svg",
-    "bytes": 910,
-    "tags": [
-      "g",
-      "path",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "0 0 310 86"
-  },
-  {
-    "file": "wordmark-light.svg",
-    "bytes": 910,
-    "tags": [
-      "g",
-      "path",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "0 0 310 86"
-  },
-  {
-    "file": "mark-light.svg",
-    "bytes": 254,
-    "tags": [
-      "path",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "0 0 80 86"
+    "file": "app-icon.svg",
+    "bytes": 362,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
   },
   {
     "file": "favicon.svg",
-    "bytes": 331,
-    "tags": [
-      "path",
-      "rect",
-      "svg",
-      "title"
-    ],
-    "security": "PASS",
-    "viewBox": "-12 -12 104 104"
+    "bytes": 367,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "mark-black.svg",
+    "bytes": 307,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "mark-dark.svg",
+    "bytes": 307,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "mark-light.svg",
+    "bytes": 307,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "mark-monochrome.svg",
+    "bytes": 307,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "mark-white.svg",
+    "bytes": 307,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "social-avatar.svg",
+    "bytes": 362,
+    "viewBox": "0 0 120 120",
+    "security": "PASS"
+  },
+  {
+    "file": "social-banner.svg",
+    "bytes": 1991,
+    "viewBox": "0 0 1500 500",
+    "security": "PASS"
+  },
+  {
+    "file": "wordmark-black.svg",
+    "bytes": 1895,
+    "viewBox": "0 0 420 150",
+    "security": "PASS"
+  },
+  {
+    "file": "wordmark-dark.svg",
+    "bytes": 1895,
+    "viewBox": "0 0 420 150",
+    "security": "PASS"
+  },
+  {
+    "file": "wordmark-light.svg",
+    "bytes": 1895,
+    "viewBox": "0 0 420 150",
+    "security": "PASS"
+  },
+  {
+    "file": "wordmark-primary.svg",
+    "bytes": 1942,
+    "viewBox": "0 0 420 150",
+    "security": "PASS"
+  },
+  {
+    "file": "wordmark-white.svg",
+    "bytes": 1895,
+    "viewBox": "0 0 420 150",
+    "security": "PASS"
   }
 ]
