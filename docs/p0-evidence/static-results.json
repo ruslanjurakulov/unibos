@@ -1,0 +1,71 @@
+[
+  {
+    "file": "mark-dark.svg",
+    "bytes": 254,
+    "tags": [
+      "path",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "0 0 80 86"
+  },
+  {
+    "file": "mark-monochrome.svg",
+    "bytes": 254,
+    "tags": [
+      "path",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "0 0 80 86"
+  },
+  {
+    "file": "wordmark-dark.svg",
+    "bytes": 910,
+    "tags": [
+      "g",
+      "path",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "0 0 310 86"
+  },
+  {
+    "file": "wordmark-light.svg",
+    "bytes": 910,
+    "tags": [
+      "g",
+      "path",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "0 0 310 86"
+  },
+  {
+    "file": "mark-light.svg",
+    "bytes": 254,
+    "tags": [
+      "path",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "0 0 80 86"
+  },
+  {
+    "file": "favicon.svg",
+    "bytes": 331,
+    "tags": [
+      "path",
+      "rect",
+      "svg",
+      "title"
+    ],
+    "security": "PASS",
+    "viewBox": "-12 -12 104 104"
+  }
+]

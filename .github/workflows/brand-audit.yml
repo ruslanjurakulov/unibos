@@ -1,0 +1,19 @@
+name: Brand audit
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  brand-static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Validate canonical SVG assets
+        run: python3 tests/brand/audit.py
+      - name: Check whitespace
+        run: git diff --check

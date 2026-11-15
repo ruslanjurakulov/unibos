@@ -1,2 +1,5 @@
-# Brand Kit v1.0
-Approved Unified symbol. Forest #12382E, Champagne #C9AE78, Ivory #F7F4ED, Midnight #101D31, White #FFFFFF. One platform. Your entire business. Inter Bold proposed. Trademark clearance pending. This directory contains initial SVG assets only; full raster and PDF kit pending.
+# Legacy brand paths
+
+These three SVG paths are retained for compatibility with existing references. They now use the owner-confirmed diagonal-accent geometry and palette from `assets/brand/`. The previous central-bar identity and v1.0 palette are superseded by the owner's 2026-11-15 instruction.
+
+Canonical masters, aligned Book/Kit, PNG/ICO exports and usage rules: [assets/brand/README.md](../assets/brand/README.md). Add new references there; do not maintain an independent identity in this directory. No trademark registration or public release is claimed.

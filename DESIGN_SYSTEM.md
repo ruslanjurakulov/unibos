@@ -19,6 +19,6 @@ Shared original UniBOS wordmark, semantic tokens, responsive components, error/l
 
 ## Acceptance and outstanding assets
 - Preserve the approved brand direction; changes require founder agreement.
-- Obtain original production SVG logo and reference images with verified usage rights; this document does not supply those assets.
+- Owner confirmed the diagonal-accent logo on 2026-11-15. Canonical outlined SVG masters and aligned v1.1 Book/Kit are in `assets/brand/`; the uploaded central-bar v1.0 identity is superseded. See its README for provenance, fonts, accessibility and usage. Trademark/IP clearance remains pending.
 - Compare actual responsive screenshots to approved concepts, and validate accessibility, keyboard interaction and functional states.
 - No public deployment or disclosure without explicit owner approval. Follow CONFIDENTIALITY.md.
