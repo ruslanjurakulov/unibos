@@ -54,15 +54,14 @@ try {
   assert.equal(ready.headers.get("cache-control"), "no-store");
   assert.equal(ready.headers.get("x-powered-by"), null);
   assert.equal((await get(`${apiUrl}/orders`)).status, 404);
-  const badDatabase = new URL(process.env.DATABASE_URL);
   const badRedis = new URL(process.env.REDIS_URL);
-  badDatabase.port = "1";
+  // Keep identity/application DB role verification live; degrade Redis after startup.
   badRedis.port = "1";
   const failedPort = await freePort();
   const failed = launch(["apps/api/dist/main.js"], {
     PORT: String(failedPort),
     HOST: "127.0.0.1",
-    DATABASE_URL: badDatabase.href,
+
     REDIS_URL: badRedis.href,
   });
   const failedUrl = `http://127.0.0.1:${failedPort}`;

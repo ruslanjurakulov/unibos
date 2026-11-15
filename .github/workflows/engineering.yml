@@ -32,6 +32,9 @@ jobs:
       - run: npm run security:secrets
       - run: npm audit --audit-level=high
       - run: npm run setup:local && npm run infra:up
+      - run: npm run security:secrets
+      - run: npm run db:migrate
+      - run: npm run test:security
       - run: npm run test:smoke
       - name: Stop isolated local services
         if: always()

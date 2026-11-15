@@ -1,0 +1,28 @@
+{
+  "name": "@unibos/security",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "test:integration": "npm run build && node --env-file=../../.env --test test/*.integration.mjs"
+  },
+  "dependencies": {
+    "better-auth": "1.7.25",
+    "pg": "8.23.1",
+    "better-call": "1.4.5"
+  },
+  "devDependencies": {
+    "@types/pg": "8.23.1"
+  }
+}

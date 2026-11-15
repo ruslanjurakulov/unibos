@@ -11,6 +11,13 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  handleSecurityRoute,
+  sendSafeApiError,
+  verifyRestrictedAppPool,
+  type ApiSecurityOptions,
+} from "./security-routes";
 import type { RuntimeConfig } from "@unibos/runtime";
 import { InfrastructureProbes, type HealthProbes } from "./probes";
 import { writeEvent } from "./logging";
@@ -95,12 +102,26 @@ export async function createApplication(
   tracing: ReadinessTracing = new ReadinessTracing(
     readTracingEnabled(process.env.OTEL_ENABLED),
   ),
+  securityOptions?: ApiSecurityOptions,
 ) {
+  if (securityOptions) await verifyRestrictedAppPool(securityOptions.pool);
   @Module({
     controllers: [HealthController],
     providers: [
       { provide: PROBES, useValue: probes ?? new InfrastructureProbes(config) },
       { provide: TRACING, useValue: tracing },
+      {
+        provide: "security-lifecycle",
+        useValue: {
+          onApplicationShutdown: async () => {
+            if (securityOptions)
+              await Promise.allSettled([
+                securityOptions.pool.end(),
+                securityOptions.security.close(),
+              ]);
+          },
+        },
+      },
     ],
   })
   class ApiModule {}
@@ -116,6 +137,21 @@ export async function createApplication(
     response.setHeader("Referrer-Policy", "no-referrer");
     next();
   });
+  if (securityOptions) {
+    app.use(
+      (
+        request: IncomingMessage,
+        response: ServerResponse,
+        next: () => void,
+      ) => {
+        void handleSecurityRoute(request, response, securityOptions)
+          .then((handled) => {
+            if (!handled) next();
+          })
+          .catch((error: unknown) => sendSafeApiError(response, error));
+      },
+    );
+  }
   app.useGlobalFilters(new SafeExceptionFilter());
   app.enableShutdownHooks();
   return app;
