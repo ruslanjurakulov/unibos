@@ -28,10 +28,10 @@ The code review has no blocking implementation finding, but merge remains blocke
 
 Do not merge PR #4 or #6 until the owner resolves the visibility mismatch and approves a safe, non-production verification plan for production deployment controls. Do not validate the setting by pushing to `main`, promoting a Preview, or changing domains.
 
-## Actions after local review
+## Delivery completed
 
-- Push the P4.4.5 commit to the existing P4 branch only after all local gates pass and confirm the exact remote SHA.
-- Update PR #6 with the QA and migration-safety reports; keep PR #6 open and unmerged.
-- Verify Engineering CI and Brand Audit on the exact pushed SHA.
-- Create and inspect a Vercel **Preview** only. Record deployment ID, SHA, state, URL, and screenshot evidence in the QA report.
-- If Preview is unavailable, fails, or exposes unexpected production configuration, stop and report it; do not promote or deploy to production.
+- P4.4.5 commits were pushed to the existing `feat/p4-restaurant-operations` branch. Final SHA: `0225c4474cf962341059c8420b6501b402720063`.
+- PR #6 was updated with the P4.4.5 implementation, verification, migration, and release notes. It remains open and unmerged.
+- Engineering CI run 32 and Brand Audit run 36 passed on the exact SHA. Vercel Preview check also passed.
+- Preview URL, Vercel inspector reference, live route status, backend-unavailable behavior, and screenshot evidence are recorded in `P4_4_5_INTEGRATION_QA.md`.
+- No Preview was promoted and no production deployment was created.
