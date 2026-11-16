@@ -175,8 +175,6 @@ export default function DashboardPage() {
           <a href="#businesses">Businesses</a>
           <a href="#branches">Branches</a>
           <Link href="/demo">Explore demos</Link>
-          <Link href="/demo/service">P4.3 service demo</Link>
-          <Link href="/demo/workspace">Product demo</Link>
           <button
             className="theme-toggle"
             onClick={() => setDark((value) => !value)}
