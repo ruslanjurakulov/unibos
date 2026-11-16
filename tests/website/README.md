@@ -29,3 +29,13 @@ UNIBOS_TEST_BASE_URL=http://127.0.0.1:3130 node tests/website/p431-navigation.cj
 ```
 
 This checks the six Demo Hub destinations, UZ/RU/EN content, cashier and guest return paths, browser back/forward, same-page service role selection, 22 implemented page routes plus their internal links, localized mobile menu focus/Escape behavior, and horizontal overflow at 320–1920px. It does not authenticate against the API or prove role authorization; those remain server-side checks.
+
+## P4.4.5 authenticated catalog UI
+
+Start the website with `NEXT_PUBLIC_AUTH_CONFIGURED=true`, then run:
+
+```sh
+BASE_URL=http://127.0.0.1:3100 node tests/website/p445-catalog.cjs
+```
+
+This test uses synthetic API fixtures. It exercises category/product edits, branch availability, price history, expected-version stale-price rejection, keyboard form submission, language/theme behavior and layout at 320–1920px. Screenshots are browser evidence only; this test does not prove backend persistence or authenticated API integration. Run API and disposable PostgreSQL integration/security suites separately.

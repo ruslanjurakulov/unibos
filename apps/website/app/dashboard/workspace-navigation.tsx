@@ -33,6 +33,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     kitchen: "Oshxona",
     shifts: "Smenalar",
     payments: "Naqd to‘lovlar",
+    menu: "Katalog",
   },
   ru: {
     owner: "Владелец",
@@ -44,6 +45,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     kitchen: "Кухня",
     shifts: "Смены",
     payments: "Наличные платежи",
+    menu: "Каталог",
   },
   en: {
     owner: "Owner",
@@ -55,6 +57,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     kitchen: "Kitchen",
     shifts: "Cash shifts",
     payments: "Cash payments",
+    menu: "Catalog",
   },
 };
 const copy: Record<Language, Record<string, string>> = {
@@ -123,6 +126,7 @@ const linkKey: Record<string, string> = {
   kitchen: "kitchen",
   shifts: "shifts",
   payments: "payments",
+  menu: "menu",
 };
 
 export default function WorkspaceNavigation({

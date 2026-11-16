@@ -891,6 +891,15 @@ export async function handleSecurityRoute(
                       },
                     ]
                   : []),
+                ...(capabilities.includes("catalog.manage") ||
+                capabilities.includes("catalog.branch.manage")
+                  ? [
+                      {
+                        href: `/dashboard/menu?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "menu",
+                      },
+                    ]
+                  : []),
                 ...(capabilities.includes("waiter.operate")
                   ? [
                       {
@@ -2334,7 +2343,7 @@ export async function handleSecurityRoute(
             payload: {
               products: (
                 await client.query(
-                  "SELECT p.id,p.category_id,c.name category_name,p.name,p.description,COALESCE(a.available,true) available,v.price_minor,v.currency_code FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=now() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.active AND c.active ORDER BY c.sort_order,p.sort_order,p.name LIMIT 1000",
+                  "SELECT p.id,p.category_id,c.name category_name,p.name,p.description,p.image_key,p.active,COALESCE(a.available,true) available,v.id price_version,v.price_minor::text price_minor,v.currency_code FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT id,price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=now() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.active AND c.active ORDER BY c.sort_order,p.sort_order,p.name LIMIT 1000",
                   [orgId, branchId],
                 )
               ).rows,
@@ -2360,7 +2369,11 @@ export async function handleSecurityRoute(
           body &&
           itemId
         ) {
-          exactKeys(body, ["priceMinor", "currencyCode"]);
+          exactKeys(body, [
+            "priceMinor",
+            "currencyCode",
+            "expectedPriceVersionId",
+          ]);
           requireMfa(identity);
           if (!orgManager) throw new ApiAccessError(403);
           if (
@@ -2375,6 +2388,21 @@ export async function handleSecurityRoute(
             [orgId, itemId],
           );
           if (!product.rows[0]) throw new ApiAccessError(404);
+          const latestPrice = await client.query(
+            "SELECT id FROM public.product_price_versions WHERE organization_id=$1 AND branch_id=$2 AND product_id=$3 AND effective_at<=now() ORDER BY effective_at DESC,id DESC LIMIT 1",
+            [orgId, branchId, itemId],
+          );
+          const currentPriceVersionId = latestPrice.rows[0]?.id ?? null;
+          const expectedPriceVersionId = body.expectedPriceVersionId;
+          if (
+            expectedPriceVersionId !== null &&
+            typeof expectedPriceVersionId !== "string"
+          )
+            throw new ApiAccessError(400);
+          if (typeof expectedPriceVersionId === "string")
+            validateUuid(expectedPriceVersionId);
+          if (expectedPriceVersionId !== currentPriceVersionId)
+            throw new ApiAccessError(409);
           const row = await client.query(
             "INSERT INTO public.product_price_versions(organization_id,branch_id,product_id,price_minor,currency_code) VALUES($1,$2,$3,$4,$5) RETURNING id,product_id,price_minor,currency_code,effective_at",
             [orgId, branchId, itemId, body.priceMinor, body.currencyCode],

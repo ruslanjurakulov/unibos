@@ -15,7 +15,7 @@ Owner/director manage product identity and prices. Assigned branch administrator
 - `GET|POST /api/organizations/:org/catalog/products`
 - `PATCH /api/organizations/:org/catalog/products/:product`
 - `GET /api/organizations/:org/branches/:branch/catalog`
-- `GET|POST /api/organizations/:org/branches/:branch/catalog/:product/price`
+- `GET|POST /api/organizations/:org/branches/:branch/catalog/:product/price` (POST requires the expected current price-version ID, or `null` when no branch price exists; stale versions return 409)
 - `PATCH /api/organizations/:org/branches/:branch/catalog/:product/availability`
 - `GET|POST /api/organizations/:org/branches/:branch/tables`
 - `PATCH /api/organizations/:org/branches/:branch/tables/:table`

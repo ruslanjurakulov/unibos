@@ -302,7 +302,11 @@ test("workspace capability endpoint derives scoped memberships from the verified
     close: async () => {},
   };
   const server = createServer((req, res) => {
-    void handleSecurityRoute(req, res, { security, pool, trustedOrigins: [] })
+    void handleSecurityRoute(req, res, {
+      security,
+      pool,
+      trustedOrigins: [origin],
+    })
       .then((handled) => {
         if (!handled) {
           res.statusCode = 404;
@@ -341,6 +345,11 @@ test("workspace capability endpoint derives scoped memberships from the verified
     );
     const b = body.organizations.find((item) => item.id === orgB);
     assert.ok(b.branches[0].capabilities.includes("kitchen.operate"));
+    assert.ok(b.branches[0].navigation.some((item) => item.id === "menu"));
+    assert.ok(
+      !a.navigation.some((item) => item.id === "menu"),
+      "catalog management navigation is not exposed to a cashier",
+    );
   } finally {
     server.close();
     await once(server, "close");
@@ -450,7 +459,11 @@ test("P4 catalog mutations require an authorized MFA role and QR secrets are sto
       {
         method: "POST",
         headers: { Origin: origin, "Content-Type": "application/json" },
-        body: JSON.stringify({ priceMinor: 1000, currencyCode: "UZS" }),
+        body: JSON.stringify({
+          priceMinor: 1000,
+          currencyCode: "UZS",
+          expectedPriceVersionId: null,
+        }),
       },
     );
     assert.equal(forbiddenPrice.status, 403);
@@ -477,6 +490,97 @@ test("P4 catalog mutations require an authorized MFA role and QR secrets are sto
     assert.equal(insertedTokenHash.length, 32);
     assert.notEqual(insertedTokenHash.toString("base64url"), payload.secret);
     assert.deepEqual(tokenRotationQueries, ["revoke", "insert"]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("catalog price writes use the caller's expected version and reject stale prices", async () => {
+  const productId = "5f08bc02-6c3d-4b4f-bd7a-7e155c8aa401";
+  const firstPriceId = "604a1bb4-3632-4b61-aaf6-14e65796edaf";
+  let latestPriceId = null;
+  const inserts = [];
+  const pool = {
+    async connect() {
+      return {
+        async query(sql, values = []) {
+          if (String(sql).includes("private.member_of"))
+            return { rows: [{ allowed: true }] };
+          if (
+            String(sql).includes(
+              "SELECT role, branch_id FROM public.memberships",
+            )
+          )
+            return { rows: owner };
+          if (String(sql).includes("SELECT id FROM public.products"))
+            return { rows: [{ id: productId }] };
+          if (
+            String(sql).includes("SELECT id FROM public.product_price_versions")
+          )
+            return { rows: latestPriceId ? [{ id: latestPriceId }] : [] };
+          if (
+            String(sql).includes("INSERT INTO public.product_price_versions")
+          ) {
+            inserts.push(values);
+            latestPriceId =
+              inserts.length === 1
+                ? firstPriceId
+                : "704a1bb4-3632-4b61-aaf6-14e65796edaf";
+            return { rows: [{ id: latestPriceId, price_minor: values[3] }] };
+          }
+          return { rows: [], rowCount: 0 };
+        },
+        release() {},
+      };
+    },
+  };
+  const security = {
+    getIdentity: async () => ({
+      userId: "actor",
+      sessionId: "session",
+      mfaVerified: true,
+    }),
+    nodeHandler: async (_req, res) => res.end(),
+    close: async () => {},
+  };
+  const server = createServer((req, res) => {
+    void handleSecurityRoute(req, res, {
+      security,
+      pool,
+      trustedOrigins: [origin],
+    })
+      .then((handled) => {
+        if (!handled) {
+          res.statusCode = 404;
+          res.end();
+        }
+      })
+      .catch((error) => sendSafeApiError(res, error));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  const url = `${origin}/api/organizations/${org}/branches/${branch}/catalog/${productId}/price`;
+  const postPrice = (expectedPriceVersionId, priceMinor) =>
+    fetch(url, {
+      method: "POST",
+      headers: { Origin: origin, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        priceMinor,
+        currencyCode: "UZS",
+        expectedPriceVersionId,
+      }),
+    });
+  try {
+    assert.equal((await postPrice(null, 1000)).status, 201);
+    assert.equal((await postPrice(null, 1200)).status, 409);
+    assert.equal(
+      inserts.length,
+      1,
+      "a stale price request must not append a version",
+    );
+    assert.equal((await postPrice(firstPriceId, 1200)).status, 201);
+    assert.equal(inserts.length, 2);
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
