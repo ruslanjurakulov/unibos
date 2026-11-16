@@ -165,6 +165,21 @@ export default function OperationsDemo() {
           UniBOS <span>OPERATIONS</span>
         </a>
         <div className={styles.actions}>
+          <a
+            className={styles.iconButton}
+            href="/demo/pos"
+            aria-label="Kassir POS demo"
+            style={{
+              display: "inline-grid",
+              placeItems: "center",
+              width: "auto",
+              padding: "0 12px",
+              fontSize: 11,
+              textDecoration: "none",
+            }}
+          >
+            Kassir POS demo
+          </a>
           <label className={styles.branch}>
             Faol filial
             <select

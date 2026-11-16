@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import test from "node:test";
+import { createServer } from "node:http";
+import { once } from "node:events";
 import pg from "pg";
 import {
   createRuntimeRoles,
@@ -10,6 +12,12 @@ import {
   createOrganization,
   TenantAccessError,
 } from "../dist/index.js";
+import { createRequire } from "node:module";
+const require = createRequire(import.meta.url);
+const {
+  handleSecurityRoute,
+  sendSafeApiError,
+} = require("../../../apps/api/dist/security-routes.js");
 
 const adminUrl = process.env.MIGRATION_DATABASE_URL;
 if (!adminUrl || process.env.NODE_ENV === "production")
@@ -625,6 +633,326 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
             2,
           );
         });
+      },
+    );
+
+    await t.test(
+      "P4.2 cashier order creation is atomic, idempotent and branch scoped",
+      async () => {
+        const seed = await withTenantTransaction(
+          app,
+          "owner_a",
+          orgA.id,
+          async (c) => {
+            const category = (
+              await c.query(
+                "INSERT INTO product_categories(organization_id,name) VALUES($1,'Order test') RETURNING id",
+                [orgA.id],
+              )
+            ).rows[0].id;
+            const product = (
+              await c.query(
+                "INSERT INTO products(organization_id,category_id,name) VALUES($1,$2,'Order soup') RETURNING id",
+                [orgA.id, category],
+              )
+            ).rows[0].id;
+            const price = (
+              await c.query(
+                "INSERT INTO product_price_versions(organization_id,branch_id,product_id,price_minor,currency_code,created_by) VALUES($1,$2,$3,12500,'UZS','owner_a') RETURNING id",
+                [orgA.id, branchA, product],
+              )
+            ).rows[0].id;
+            const table = (
+              await c.query(
+                "INSERT INTO restaurant_tables(organization_id,branch_id,table_code,display_name,seats) VALUES($1,$2,'POS1','POS test',2) RETURNING id",
+                [orgA.id, branchA],
+              )
+            ).rows[0].id;
+            const tableRow = await c.query(
+              "SELECT id,active,status,branch_id FROM restaurant_tables WHERE id=$1",
+              [table],
+            );
+            const foreignTable = (
+              await c.query(
+                "INSERT INTO restaurant_tables(organization_id,branch_id,table_code,display_name,seats) VALUES($1,$2,'POS2','Other branch table',2) RETURNING id",
+                [orgA.id, branchA2],
+              )
+            ).rows[0].id;
+            return {
+              product,
+              price,
+              table,
+              foreignTable,
+              tableRow: tableRow.rows[0],
+            };
+          },
+        );
+        assert.deepEqual(seed.tableRow, {
+          id: seed.table,
+          active: true,
+          status: "available",
+          branch_id: branchA,
+        });
+        const cashierTable = await withTenantTransaction(
+          app,
+          "cashier_a",
+          orgA.id,
+          async (c) => ({
+            access: (
+              await c.query("SELECT private.branch_access($1,$2) allowed", [
+                orgA.id,
+                branchA,
+              ])
+            ).rows[0].allowed,
+            rows: (
+              await c.query(
+                "SELECT id,active,status FROM restaurant_tables WHERE organization_id=$1 AND branch_id=$2 AND id=$3",
+                [orgA.id, branchA, seed.table],
+              )
+            ).rows,
+          }),
+        );
+        assert.equal(cashierTable.access, true);
+        assert.equal(cashierTable.rows.length, 1);
+        const tableLock = await withTenantTransaction(
+          app,
+          "cashier_a",
+          orgA.id,
+          async (c) =>
+            (
+              await c.query(
+                "SELECT private.lock_cashier_table($1,$2,$3) available",
+                [orgA.id, branchA, seed.table],
+              )
+            ).rows[0].available,
+        );
+        assert.equal(tableLock, true);
+        let actor = "cashier_a";
+        const orderPool = new pg.Pool({
+          connectionString: urlFor(
+            "unibos_app",
+            process.env.APP_DATABASE_PASSWORD,
+          ),
+          max: 5,
+        });
+        watch(orderPool);
+        const server = createServer((req, res) => {
+          void handleSecurityRoute(req, res, {
+            security: {
+              getIdentity: async () => ({
+                userId: actor,
+                sessionId: "test",
+                mfaVerified: true,
+              }),
+              nodeHandler: async (_req, response) => response.end(),
+              close: async () => {},
+            },
+            pool: orderPool,
+            trustedOrigins: [testOrigin],
+          }).catch((error) => sendSafeApiError(res, error));
+        });
+        server.listen(0, "127.0.0.1");
+        await once(server, "listening");
+        const testOrigin = `http://127.0.0.1:${server.address().port}`;
+        const path = `/api/v1/organizations/${orgA.id}/branches/${branchA}/orders`;
+        const call = (route, method = "GET", body) =>
+          fetch(`${testOrigin}${route}`, {
+            method,
+            headers: {
+              Origin: testOrigin,
+              ...(body ? { "Content-Type": "application/json" } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+          });
+        const payload = {
+          idempotencyKey: randomUUID(),
+          fulfillmentType: "DINE_IN",
+          tableId: seed.table,
+          items: [
+            {
+              productId: seed.product,
+              quantity: "1.500",
+              priceVersion: seed.price,
+              notes: "No herbs",
+            },
+          ],
+          note: "Spoken order",
+        };
+        try {
+          const [a, b] = await Promise.all([
+            call(path, "POST", payload),
+            call(path, "POST", payload),
+          ]);
+          assert.deepEqual(
+            [a.status, b.status].sort(),
+            [200, 201],
+            JSON.stringify(
+              await Promise.all([a.clone().json(), b.clone().json()]),
+            ),
+          );
+          const result = await a.json();
+          const duplicate = await b.json();
+          assert.equal(result.order.id, duplicate.order.id);
+          assert.equal(result.order.total_minor, "18750");
+          assert.equal(result.items[0].quantity, "1.500");
+          assert.equal(result.items[0].product_name_snapshot, "Order soup");
+          assert.equal(result.order.table_id, seed.table);
+          assert.equal(
+            (await call(path, "POST", { ...payload, note: "different body" }))
+              .status,
+            409,
+          );
+          await withTenantTransaction(app, "owner_a", orgA.id, async (c) => {
+            await c.query(
+              "UPDATE products SET name='Renamed soup' WHERE organization_id=$1 AND id=$2",
+              [orgA.id, seed.product],
+            );
+            await c.query(
+              "INSERT INTO product_price_versions(organization_id,branch_id,product_id,price_minor,currency_code,created_by) VALUES($1,$2,$3,14000,'UZS','owner_a')",
+              [orgA.id, branchA, seed.product],
+            );
+          });
+          const stale = await call(path, "POST", {
+            ...payload,
+            idempotencyKey: randomUUID(),
+          });
+          assert.equal(stale.status, 409);
+          assert.equal((await stale.json()).reason, "STALE_PRICE");
+          const crossBranchTable = await call(path, "POST", {
+            ...payload,
+            idempotencyKey: randomUUID(),
+            tableId: seed.foreignTable,
+          });
+          assert.equal(crossBranchTable.status, 409);
+          assert.equal(
+            (await crossBranchTable.json()).reason,
+            "TABLE_UNAVAILABLE",
+          );
+          const lookedUp = await (
+            await call(`${path}/${result.order.id}`)
+          ).json();
+          assert.equal(lookedUp.items[0].product_name_snapshot, "Order soup");
+          assert.equal(lookedUp.items[0].unit_price_minor, "12500");
+          const kitchenRows = await withTenantTransaction(
+            app,
+            "kitchen_a",
+            orgA.id,
+            async (c) => ({
+              orders: (await c.query("SELECT id FROM orders")).rows,
+              prices: (
+                await c.query("SELECT id,unit_price_minor FROM order_items")
+              ).rows,
+            }),
+          );
+          assert.deepEqual(kitchenRows, { orders: [], prices: [] });
+          const currentPrice = await withTenantTransaction(
+            app,
+            "cashier_a",
+            orgA.id,
+            async (c) =>
+              (
+                await c.query(
+                  "SELECT id FROM product_price_versions WHERE organization_id=$1 AND branch_id=$2 AND product_id=$3 ORDER BY effective_at DESC,id DESC LIMIT 1",
+                  [orgA.id, branchA, seed.product],
+                )
+              ).rows[0].id,
+          );
+          const pickup = await call(path, "POST", {
+            idempotencyKey: randomUUID(),
+            fulfillmentType: "PICKUP",
+            items: [
+              {
+                productId: seed.product,
+                quantity: "2",
+                priceVersion: currentPrice,
+              },
+            ],
+          });
+          assert.equal(pickup.status, 201);
+          const pickupResult = await pickup.json();
+          assert.equal(pickupResult.order.fulfillment_type, "PICKUP");
+          assert.equal(pickupResult.order.table_id, null);
+          await withTenantTransaction(app, "owner_a", orgA.id, (c) =>
+            c.query(
+              "INSERT INTO branch_product_availability(organization_id,branch_id,product_id,available) VALUES($1,$2,$3,false) ON CONFLICT(organization_id,branch_id,product_id) DO UPDATE SET available=false",
+              [orgA.id, branchA, seed.product],
+            ),
+          );
+          const unavailable = await call(path, "POST", {
+            idempotencyKey: randomUUID(),
+            fulfillmentType: "PICKUP",
+            items: [
+              {
+                productId: seed.product,
+                quantity: "1",
+                priceVersion: currentPrice,
+              },
+            ],
+          });
+          assert.equal(unavailable.status, 409);
+          assert.equal(
+            (await unavailable.json()).reason,
+            "PRODUCT_UNAVAILABLE",
+          );
+          assert.equal(
+            (
+              await call(
+                `/api/v1/organizations/${orgA.id}/branches/${branchA2}/orders/${result.order.id}`,
+              )
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await call(
+                `/api/v1/organizations/${orgB.id}/branches/${branchB}/orders/${result.order.id}`,
+              )
+            ).status,
+            403,
+          );
+          actor = "staff_a";
+          assert.equal(
+            (
+              await call(path, "POST", {
+                ...payload,
+                idempotencyKey: randomUUID(),
+              })
+            ).status,
+            403,
+          );
+          actor = "cashier_a";
+          const policy = await fixture.query(
+            "SELECT c.relrowsecurity,c.relforcerowsecurity FROM pg_class c WHERE c.oid='public.orders'::regclass",
+          );
+          assert.deepEqual(policy.rows[0], {
+            relrowsecurity: true,
+            relforcerowsecurity: true,
+          });
+          assert.equal(
+            (
+              await withTenantTransaction(app, "owner_a", orgA.id, (c) =>
+                c.query("SELECT id FROM order_events WHERE order_id=$1", [
+                  result.order.id,
+                ]),
+              )
+            ).rows.length,
+            1,
+          );
+          assert.equal(
+            (
+              await withTenantTransaction(app, "owner_a", orgA.id, (c) =>
+                c.query(
+                  "SELECT id FROM audit_events WHERE entity_id=$1 AND action='orders.insert'",
+                  [result.order.id],
+                ),
+              )
+            ).rows.length,
+            1,
+          );
+        } finally {
+          await new Promise((resolve) => server.close(resolve));
+          await orderPool.end();
+        }
       },
     );
 

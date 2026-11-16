@@ -26,7 +26,7 @@
     "security:secrets": "node scripts/check-secrets.mjs",
     "build:security": "npm run build --workspace @unibos/runtime && npm run build --workspace @unibos/database && npm run build --workspace @unibos/security",
     "db:migrate": "node --env-file=.env infrastructure/migrate.mjs",
-    "test:security": "npm run test:integration --workspace @unibos/database && node --env-file=.env --test tests/security/*.test.mjs"
+    "test:security": "npm run build:security && npm run build --workspace @unibos/api && npm run test:integration --workspace @unibos/database && node --env-file=.env --test tests/security/*.test.mjs"
   },
   "devDependencies": {
     "@types/node": "24.19.2",

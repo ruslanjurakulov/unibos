@@ -174,6 +174,9 @@ export default function DashboardPage() {
         <nav>
           <a href="#businesses">Businesses</a>
           <a href="#branches">Branches</a>
+          {process.env.NEXT_PUBLIC_AUTH_CONFIGURED === "true" && (
+            <Link href="/dashboard/pos">Cashier POS</Link>
+          )}
           <Link href="/demo/workspace">Product demo</Link>
           <button
             className="theme-toggle"

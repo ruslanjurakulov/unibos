@@ -178,6 +178,7 @@ export async function migrateBusiness(adminPool: Pool): Promise<void> {
     ["unibos-business-001", "001-business-security.sql"],
     ["unibos-business-002", "002-audit-permission-details.sql"],
     ["unibos-business-003", "003-restaurant-catalog-tables.sql"],
+    ["unibos-business-004", "004-unified-orders.sql"],
   ] as const)
     await applyBusinessMigration(adminPool, id, file);
 }

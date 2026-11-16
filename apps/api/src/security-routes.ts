@@ -32,7 +32,10 @@ export interface ApiSecurityOptions {
   trustedOrigins: readonly string[];
 }
 export class ApiAccessError extends Error {
-  constructor(readonly status: number) {
+  constructor(
+    readonly status: number,
+    readonly reason?: string,
+  ) {
     super("Request denied");
   }
 }
@@ -209,6 +212,9 @@ export function sendSafeApiError(response: ServerResponse, error: unknown) {
                   : status === 400
                     ? "Invalid request"
                     : "Request failed",
+    ...(error instanceof ApiAccessError && error.reason
+      ? { reason: error.reason }
+      : {}),
   });
 }
 async function actorMemberships(
@@ -260,6 +266,252 @@ function optionalStringField(
   const value = body[key];
   if (value === null || value === undefined || value === "") return null;
   return stringField(body, key, max);
+}
+
+type OrderRequestItem = {
+  productId: string;
+  quantity: string;
+  priceVersion: string;
+  notes: string | null;
+};
+
+function parseOrderRequest(body: Record<string, unknown>) {
+  exactKeys(
+    body,
+    ["idempotencyKey", "fulfillmentType", "tableId", "items", "note"],
+    ["idempotencyKey", "fulfillmentType", "items"],
+  );
+  const idempotencyKey = validateUuid(stringField(body, "idempotencyKey", 36));
+  const fulfillmentType = body.fulfillmentType;
+  if (fulfillmentType !== "DINE_IN" && fulfillmentType !== "PICKUP")
+    throw new ApiAccessError(400);
+  const tableId =
+    body.tableId === undefined || body.tableId === null
+      ? null
+      : validateUuid(stringField(body, "tableId", 36));
+  if ((fulfillmentType === "DINE_IN") !== Boolean(tableId))
+    throw new ApiAccessError(400);
+  if (
+    !Array.isArray(body.items) ||
+    body.items.length < 1 ||
+    body.items.length > 100
+  )
+    throw new ApiAccessError(400);
+  const items: OrderRequestItem[] = body.items.map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      throw new ApiAccessError(400);
+    const item = raw as Record<string, unknown>;
+    exactKeys(
+      item,
+      ["productId", "quantity", "priceVersion", "notes"],
+      ["productId", "quantity", "priceVersion"],
+    );
+    const quantity = stringField(item, "quantity", 12);
+    if (
+      !/^(?:0|[1-9]\d{0,3})(?:\.\d{1,3})?$/.test(quantity) ||
+      /^0(?:\.0{1,3})?$/.test(quantity)
+    )
+      throw new ApiAccessError(400);
+    return {
+      productId: validateUuid(stringField(item, "productId", 36)),
+      quantity,
+      priceVersion: validateUuid(stringField(item, "priceVersion", 36)),
+      notes: optionalStringField(item, "notes", 300),
+    };
+  });
+  if (new Set(items.map((item) => item.productId)).size !== items.length)
+    throw new ApiAccessError(400);
+  const note = optionalStringField(body, "note", 500);
+  return { idempotencyKey, fulfillmentType, tableId, items, note } as const;
+}
+
+function quantityMilli(quantity: string): bigint {
+  const [whole = "0", fraction = ""] = quantity.split(".");
+  return BigInt(whole) * 1000n + BigInt((fraction + "000").slice(0, 3));
+}
+
+async function readOrder(
+  client: PoolClient,
+  orgId: string,
+  branchId: string,
+  orderId: string,
+) {
+  const order = await client.query(
+    "SELECT id,organization_id,branch_id,table_id,source,fulfillment_type,created_by,status,currency_code,subtotal_minor,total_minor,order_note,version,created_at FROM public.orders WHERE organization_id=$1 AND branch_id=$2 AND id=$3",
+    [orgId, branchId, orderId],
+  );
+  if (!order.rows[0]) throw new ApiAccessError(404);
+  const items = await client.query(
+    "SELECT id,product_id,product_name_snapshot,unit_price_minor,currency_code,quantity::text,line_total_minor,product_price_version,notes FROM public.order_items WHERE organization_id=$1 AND branch_id=$2 AND order_id=$3 ORDER BY created_at,id",
+    [orgId, branchId, orderId],
+  );
+  return { order: order.rows[0], items: items.rows };
+}
+
+async function createCashierOrder(
+  client: PoolClient,
+  identity: VerifiedIdentity,
+  orgId: string,
+  branchId: string,
+  body: ReturnType<typeof parseOrderRequest>,
+) {
+  const memberships = await actorMemberships(client, orgId, identity.userId);
+  if (!canAccessBranch(memberships, branchId)) throw new ApiAccessError(403);
+  const allowed = memberships.some(
+    (membership) =>
+      (membership.branch_id === branchId &&
+        ["cashier", "administrator"].includes(membership.role)) ||
+      (membership.branch_id === null &&
+        ["owner", "director"].includes(membership.role)),
+  );
+  if (!allowed) throw new ApiAccessError(403);
+  const normalized = {
+    fulfillmentType: body.fulfillmentType,
+    tableId: body.tableId,
+    note: body.note,
+    items: [...body.items].sort((a, b) =>
+      a.productId.localeCompare(b.productId),
+    ),
+  };
+  const requestHash = createHash("sha256")
+    .update(JSON.stringify(normalized))
+    .digest();
+  await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1,0))", [
+    `${orgId}:${branchId}:${identity.userId}:CREATE_ORDER:${body.idempotencyKey}`,
+  ]);
+  const idempotency = await client.query<{
+    request_hash: Buffer;
+    order_id: string;
+  }>(
+    "SELECT request_hash,order_id FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='CREATE_ORDER' AND idempotency_key=$4",
+    [orgId, branchId, identity.userId, body.idempotencyKey],
+  );
+  const existing = idempotency.rows[0];
+  if (existing && !existing.request_hash.equals(requestHash))
+    throw new ApiAccessError(409, "IDEMPOTENCY_KEY_REUSED");
+  if (existing)
+    return {
+      ...(await readOrder(client, orgId, branchId, existing.order_id)),
+      duplicate: true,
+    };
+  if (body.tableId) {
+    const table = await client.query<{ available: boolean }>(
+      "SELECT private.lock_cashier_table($1,$2,$3) AS available",
+      [orgId, branchId, body.tableId],
+    );
+    if (!table.rows[0]?.available)
+      throw new ApiAccessError(409, "TABLE_UNAVAILABLE");
+  }
+
+  let currency: string | undefined;
+  let subtotal = 0n;
+  const resolved: Array<
+    OrderRequestItem & {
+      name: string;
+      unitPrice: bigint;
+      currency: string;
+      lineTotal: bigint;
+    }
+  > = [];
+  for (const item of body.items) {
+    const locked = await client.query<{ available: boolean }>(
+      "SELECT private.lock_cashier_product($1,$2,$3) AS available",
+      [orgId, branchId, item.productId],
+    );
+    if (!locked.rows[0]?.available)
+      throw new ApiAccessError(409, "PRODUCT_UNAVAILABLE");
+    const product = await client.query<{
+      name: string;
+      price_minor: string | null;
+      currency_code: string | null;
+      price_version: string | null;
+      available: boolean;
+    }>(
+      "SELECT p.name,v.price_minor::text,v.currency_code,v.id price_version,COALESCE(a.available,true) available FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT id,price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=clock_timestamp() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.id=$3 AND p.active AND c.active",
+      [orgId, branchId, item.productId],
+    );
+    const row = product.rows[0];
+    if (
+      !row ||
+      !row.available ||
+      row.price_minor === null ||
+      !row.price_version
+    )
+      throw new ApiAccessError(409, "PRODUCT_UNAVAILABLE");
+    if (row.price_version !== item.priceVersion)
+      throw new ApiAccessError(409, "STALE_PRICE");
+    if (currency && currency !== row.currency_code)
+      throw new ApiAccessError(409, "CURRENCY_MISMATCH");
+    currency = row.currency_code ?? undefined;
+    const unitPrice = BigInt(row.price_minor ?? "0");
+    const lineTotal = (unitPrice * quantityMilli(item.quantity) + 500n) / 1000n;
+    subtotal += lineTotal;
+    if (subtotal > 9000000000000000n) throw new ApiAccessError(400);
+    resolved.push({
+      ...item,
+      name: row.name,
+      unitPrice,
+      currency: row.currency_code ?? "",
+      lineTotal,
+    });
+  }
+  if (!currency) throw new ApiAccessError(409, "CURRENCY_MISMATCH");
+  const order = await client.query<{ id: string }>(
+    "INSERT INTO public.orders(organization_id,branch_id,table_id,source,fulfillment_type,created_by,status,currency_code,subtotal_minor,total_minor,order_note) VALUES($1,$2,$3,'CASHIER_POS',$4,$5,'SUBMITTED',$6,$7,$7,$8) RETURNING id",
+    [
+      orgId,
+      branchId,
+      body.tableId,
+      body.fulfillmentType,
+      identity.userId,
+      currency,
+      subtotal.toString(),
+      body.note,
+    ],
+  );
+  const orderId = order.rows[0]!.id;
+  for (const item of resolved)
+    await client.query(
+      "INSERT INTO public.order_items(organization_id,branch_id,order_id,product_id,product_name_snapshot,unit_price_minor,currency_code,quantity,line_total_minor,product_price_version,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8::numeric,$9,$10,$11)",
+      [
+        orgId,
+        branchId,
+        orderId,
+        item.productId,
+        item.name,
+        item.unitPrice.toString(),
+        item.currency,
+        item.quantity,
+        item.lineTotal.toString(),
+        item.priceVersion,
+        item.notes,
+      ],
+    );
+  await client.query(
+    "INSERT INTO public.order_events(organization_id,branch_id,order_id,event_type,actor_user_id,event_data) VALUES($1,$2,$3,'ORDER_SUBMITTED',$4,$5::jsonb)",
+    [
+      orgId,
+      branchId,
+      orderId,
+      identity.userId,
+      JSON.stringify({ source: "CASHIER_POS", itemCount: resolved.length }),
+    ],
+  );
+  await client.query(
+    "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id) VALUES($1,$2,$3,'CREATE_ORDER',$4,$5,$6)",
+    [
+      orgId,
+      branchId,
+      identity.userId,
+      body.idempotencyKey,
+      requestHash,
+      orderId,
+    ],
+  );
+  return {
+    ...(await readOrder(client, orgId, branchId, orderId)),
+    duplicate: false,
+  };
 }
 
 /** Runs before Nest's body parser; all authorization comes from the verified session. */
@@ -342,6 +594,100 @@ export async function handleSecurityRoute(
       json(response, 201, { organization });
       return true;
     }
+  }
+  const orderRoute =
+    /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/(pos|orders)(?:\/([^/]+))?$/.exec(
+      path,
+    );
+  if (orderRoute) {
+    const orgId = validateUuid(orderRoute[1] ?? "");
+    const branchId = validateUuid(orderRoute[2] ?? "");
+    const resource = orderRoute[3];
+    const orderId = orderRoute[4] ? validateUuid(orderRoute[4]) : undefined;
+    const method = request.method ?? "GET";
+    if (
+      (resource === "pos" && (method !== "GET" || orderId)) ||
+      (resource === "orders" &&
+        !((method === "POST" && !orderId) || (method === "GET" && orderId)))
+    )
+      throw new ApiAccessError(404);
+    const body =
+      method === "POST"
+        ? parseOrderRequest(await readJson(request))
+        : undefined;
+    const result = await withTenantTransaction(
+      options.pool,
+      identity.userId,
+      orgId,
+      async (client) => {
+        const memberships = await actorMemberships(
+          client,
+          orgId,
+          identity.userId,
+        );
+        if (!canAccessBranch(memberships, branchId))
+          throw new ApiAccessError(403);
+        const canOperate = memberships.some(
+          (membership) =>
+            (membership.branch_id === branchId &&
+              ["cashier", "administrator"].includes(membership.role)) ||
+            (membership.branch_id === null &&
+              ["owner", "director"].includes(membership.role)),
+        );
+        const canReadFinancials = memberships.some(
+          (membership) =>
+            (membership.branch_id === branchId &&
+              ["cashier", "accountant", "administrator"].includes(
+                membership.role,
+              )) ||
+            (membership.branch_id === null &&
+              ["owner", "director"].includes(membership.role)),
+        );
+        if (
+          (resource === "pos" && !canOperate) ||
+          (resource === "orders" && method === "GET" && !canReadFinancials)
+        )
+          throw new ApiAccessError(403);
+        if (resource === "pos") {
+          const branch = await client.query(
+            "SELECT id,name FROM public.branches WHERE organization_id=$1 AND id=$2",
+            [orgId, branchId],
+          );
+          if (!branch.rows[0]) throw new ApiAccessError(404);
+          const products = await client.query(
+            "SELECT p.id,p.name,p.description,p.image_key,p.category_id,c.name category_name,COALESCE(a.available,true) available,v.id price_version,v.price_minor::text,currencY_code FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT id,price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=clock_timestamp() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.active AND c.active ORDER BY c.sort_order,p.sort_order,p.name LIMIT 1000",
+            [orgId, branchId],
+          );
+          const tables = await client.query(
+            "SELECT id,table_code,display_name,seats,status FROM public.restaurant_tables WHERE organization_id=$1 AND branch_id=$2 AND active ORDER BY table_code LIMIT 500",
+            [orgId, branchId],
+          );
+          return {
+            status: 200,
+            payload: {
+              branch: branch.rows[0],
+              products: products.rows,
+              tables: tables.rows,
+            },
+          };
+        }
+        if (method === "POST" && body) {
+          requireMfa(identity);
+          const created = await createCashierOrder(
+            client,
+            identity,
+            orgId,
+            branchId,
+            body,
+          );
+          return { status: created.duplicate ? 200 : 201, payload: created };
+        }
+        const found = await readOrder(client, orgId, branchId, orderId!);
+        return { status: 200, payload: found };
+      },
+    );
+    json(response, result.status, result.payload);
+    return true;
   }
   const p4 =
     /^\/api\/organizations\/([^/]+)\/(?:catalog\/(categories|products)(?:\/([^/]+))?|branches\/([^/]+)\/(catalog|tables)(?:\/([^/]+))?(?:\/(price|availability|qr-tokens))?|table-qr-tokens\/([^/]+))$/.exec(
@@ -626,6 +972,11 @@ export async function handleSecurityRoute(
             !/^[A-Z]{3}$/.test(body.currencyCode)
           )
             throw new ApiAccessError(400);
+          const product = await client.query(
+            "SELECT id FROM public.products WHERE organization_id=$1 AND id=$2 AND active FOR UPDATE",
+            [orgId, itemId],
+          );
+          if (!product.rows[0]) throw new ApiAccessError(404);
           const row = await client.query(
             "INSERT INTO public.product_price_versions(organization_id,branch_id,product_id,price_minor,currency_code) VALUES($1,$2,$3,$4,$5) RETURNING id,product_id,price_minor,currency_code,effective_at",
             [orgId, branchId, itemId, body.priceMinor, body.currencyCode],
@@ -646,6 +997,11 @@ export async function handleSecurityRoute(
             typeof body.available !== "boolean"
           )
             throw new ApiAccessError(403);
+          const product = await client.query(
+            "SELECT id FROM public.products WHERE organization_id=$1 AND id=$2 AND active FOR UPDATE",
+            [orgId, itemId],
+          );
+          if (!product.rows[0]) throw new ApiAccessError(404);
           const row = await client.query(
             "INSERT INTO public.branch_product_availability(organization_id,branch_id,product_id,available) VALUES($1,$2,$3,$4) ON CONFLICT(organization_id,branch_id,product_id) DO UPDATE SET available=EXCLUDED.available,updated_at=now() RETURNING id,product_id,available,updated_at",
             [orgId, branchId, itemId, body.available],

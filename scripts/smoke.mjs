@@ -113,6 +113,8 @@ try {
     "/contact",
     "/demo/guest",
     "/demo/operations",
+    "/demo/pos",
+    "/dashboard/pos",
     "/demo/dashboard",
     "/demo/super-admin",
     "/demo/workspace",
