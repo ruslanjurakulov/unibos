@@ -67,6 +67,8 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "orders.create",
     "waiter.operate",
     "kitchen.operate",
+    "shifts.open",
+    "shifts.close",
   ],
   director: [
     "workspace.view",
@@ -80,6 +82,8 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "orders.create",
     "waiter.operate",
     "kitchen.operate",
+    "shifts.open",
+    "shifts.close",
   ],
   administrator: [
     "workspace.view",
@@ -91,8 +95,10 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "orders.create",
     "waiter.operate",
     "kitchen.operate",
+    "shifts.open",
+    "shifts.close",
   ],
-  accountant: ["workspace.view", "orders.read"],
+  accountant: ["workspace.view", "orders.read", "shifts.read"],
   cashier: [
     "workspace.view",
     "catalog.read",
@@ -100,6 +106,8 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "orders.read",
     "orders.create",
     "waiter.operate",
+    "shifts.open",
+    "shifts.close",
   ],
   waiter: ["workspace.view", "catalog.read", "tables.read", "waiter.operate"],
   kitchen: ["workspace.view", "kitchen.operate"],
@@ -307,6 +315,57 @@ function canAccessBranch(memberships: readonly Membership[], branchId: string) {
       (membership.branch_id === null &&
         ["owner", "director"].includes(membership.role)),
   );
+}
+function canReadCashShifts(
+  memberships: readonly Membership[],
+  branchId: string,
+) {
+  return (
+    memberships.some(
+      (membership) =>
+        membership.branch_id === branchId &&
+        ["administrator", "accountant", "cashier"].includes(membership.role),
+    ) ||
+    memberships.some(
+      (membership) =>
+        membership.branch_id === null &&
+        ["owner", "director"].includes(membership.role),
+    )
+  );
+}
+function canOperateCashShifts(
+  memberships: readonly Membership[],
+  branchId: string,
+) {
+  return (
+    memberships.some(
+      (membership) =>
+        membership.branch_id === branchId &&
+        ["administrator", "cashier"].includes(membership.role),
+    ) ||
+    memberships.some(
+      (membership) =>
+        membership.branch_id === null &&
+        ["owner", "director"].includes(membership.role),
+    )
+  );
+}
+function shiftRequestHash(payload: Record<string, unknown>) {
+  return createHash("sha256").update(JSON.stringify(payload)).digest();
+}
+function minorAmount(value: unknown) {
+  if (
+    typeof value !== "string" ||
+    !/^(?:0|[1-9]\d{0,12})$/.test(value) ||
+    BigInt(value) > 1_000_000_000_000n
+  )
+    throw new ApiAccessError(400);
+  return value;
+}
+function shiftVersion(value: unknown) {
+  if (!Number.isSafeInteger(value) || typeof value !== "number" || value < 1)
+    throw new ApiAccessError(400);
+  return value;
 }
 function stringField(body: Record<string, unknown>, key: string, max: number) {
   const value = body[key];
@@ -838,6 +897,15 @@ export async function handleSecurityRoute(
                       },
                     ]
                   : []),
+                ...(capabilities.includes("shifts.read") ||
+                capabilities.includes("shifts.open")
+                  ? [
+                      {
+                        href: `/dashboard/shifts?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "shifts",
+                      },
+                    ]
+                  : []),
               ],
             };
           }),
@@ -881,6 +949,321 @@ export async function handleSecurityRoute(
       json(response, 201, { organization });
       return true;
     }
+  }
+  const shiftRoute =
+    /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/cash-shifts(?:\/([^/]+))?(?:\/(movements|begin-close|confirm-close))?$/.exec(
+      path,
+    );
+  if (shiftRoute) {
+    const orgId = validateUuid(shiftRoute[1] ?? "");
+    const branchId = validateUuid(shiftRoute[2] ?? "");
+    const shiftId = shiftRoute[3] ? validateUuid(shiftRoute[3]) : null;
+    const action = shiftRoute[4] ?? null;
+    const method = request.method ?? "GET";
+    const isRead = method === "GET" && !shiftId && !action;
+    const isOpen = method === "POST" && !shiftId && !action;
+    const isMovement =
+      method === "POST" && Boolean(shiftId) && action === "movements";
+    const isBeginClose =
+      method === "POST" && Boolean(shiftId) && action === "begin-close";
+    const isConfirmClose =
+      method === "POST" && Boolean(shiftId) && action === "confirm-close";
+    if (!(isRead || isOpen || isMovement || isBeginClose || isConfirmClose))
+      throw new ApiAccessError(404);
+    const body = method === "POST" ? await readJson(request) : undefined;
+    const result = await withTenantTransaction(
+      options.pool,
+      identity.userId,
+      orgId,
+      async (client) => {
+        const memberships = await actorMemberships(
+          client,
+          orgId,
+          identity.userId,
+        );
+        if (!canAccessBranch(memberships, branchId))
+          throw new ApiAccessError(403);
+        if (isRead) {
+          if (!canReadCashShifts(memberships, branchId))
+            throw new ApiAccessError(403);
+          const privileged =
+            canManageOrganization(memberships) ||
+            memberships.some(
+              (m) =>
+                m.branch_id === branchId &&
+                ["administrator", "accountant"].includes(m.role),
+            );
+          const ownFilter = privileged ? "" : " AND s.cashier_user_id=$3";
+          const params = privileged
+            ? [orgId, branchId]
+            : [orgId, branchId, identity.userId];
+          const active = await client.query(
+            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0))::text AS expected_current_minor " +
+              "FROM public.cash_shifts s LEFT JOIN public.cash_drawer_movements m ON m.organization_id=s.organization_id AND m.branch_id=s.branch_id AND m.shift_id=s.id " +
+              "WHERE s.organization_id=$1 AND s.branch_id=$2 AND s.status IN ('OPEN','CLOSING')" +
+              ownFilter +
+              " GROUP BY s.id ORDER BY s.opened_at DESC LIMIT 1",
+            params,
+          );
+          const history = await client.query(
+            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0))::text AS expected_current_minor " +
+              "FROM public.cash_shifts s LEFT JOIN public.cash_drawer_movements m ON m.organization_id=s.organization_id AND m.branch_id=s.branch_id AND m.shift_id=s.id " +
+              "WHERE s.organization_id=$1 AND s.branch_id=$2 AND s.status='CLOSED'" +
+              ownFilter +
+              " GROUP BY s.id ORDER BY s.closed_at DESC,s.id DESC LIMIT 50",
+            params,
+          );
+          const movements = active.rows[0]
+            ? (
+                await client.query(
+                  "SELECT id,movement_type,amount_minor::text,reason,created_by,created_at FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3 ORDER BY created_at,id",
+                  [orgId, branchId, active.rows[0].id],
+                )
+              ).rows
+            : [];
+          return {
+            status: 200,
+            payload: {
+              activeShift: active.rows[0] ?? null,
+              movements,
+              history: history.rows,
+            },
+          };
+        }
+        if (!canOperateCashShifts(memberships, branchId))
+          throw new ApiAccessError(403);
+        requireMfa(identity);
+        const operation = isOpen
+          ? "OPEN_SHIFT"
+          : isMovement
+            ? "ADD_MOVEMENT"
+            : isBeginClose
+              ? "BEGIN_CLOSE"
+              : "CONFIRM_CLOSE";
+        const idempotencyKey = validateUuid(
+          stringField(body!, "idempotencyKey", 36),
+        );
+        const expectedVersion = isOpen
+          ? null
+          : shiftVersion(body!.expectedVersion);
+        let payload: Record<string, unknown>;
+        let currencyCode: string | null = null;
+        let openingAmount: string | null = null;
+        let movementType: string | null = null;
+        let movementAmount: string | null = null;
+        let movementReason: string | null = null;
+        let countedAmount: string | null = null;
+        if (isOpen) {
+          exactKeys(body!, [
+            "idempotencyKey",
+            "currencyCode",
+            "openingAmountMinor",
+          ]);
+          currencyCode = stringField(body!, "currencyCode", 3);
+          if (!["UZS", "USD", "EUR", "RUB"].includes(currencyCode))
+            throw new ApiAccessError(400);
+          openingAmount = minorAmount(body!.openingAmountMinor);
+          payload = { operation, currencyCode, openingAmount };
+        } else if (isMovement) {
+          exactKeys(body!, [
+            "idempotencyKey",
+            "expectedVersion",
+            "movementType",
+            "amountMinor",
+            "reason",
+          ]);
+          movementType = stringField(body!, "movementType", 12);
+          if (!["CASH_IN", "CASH_OUT"].includes(movementType))
+            throw new ApiAccessError(400);
+          movementAmount = minorAmount(body!.amountMinor);
+          if (movementAmount === "0") throw new ApiAccessError(400);
+          movementReason = stringField(body!, "reason", 300);
+          payload = {
+            operation,
+            shiftId,
+            expectedVersion,
+            movementType,
+            movementAmount,
+            movementReason,
+          };
+        } else if (isBeginClose) {
+          exactKeys(body!, [
+            "idempotencyKey",
+            "expectedVersion",
+            "countedCashMinor",
+          ]);
+          countedAmount = minorAmount(body!.countedCashMinor);
+          payload = { operation, shiftId, expectedVersion, countedAmount };
+        } else {
+          exactKeys(body!, ["idempotencyKey", "expectedVersion"]);
+          payload = { operation, shiftId, expectedVersion };
+        }
+        const requestHash = shiftRequestHash(payload);
+        const lockKey = [
+          orgId,
+          branchId,
+          identity.userId,
+          operation,
+          idempotencyKey,
+        ].join(":");
+        await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [
+          lockKey,
+        ]);
+        const prior = await client.query(
+          "SELECT request_hash,shift_id,movement_id FROM public.cash_shift_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation=$4 AND idempotency_key=$5",
+          [orgId, branchId, identity.userId, operation, idempotencyKey],
+        );
+        if (prior.rows[0]) {
+          if (!Buffer.from(prior.rows[0].request_hash).equals(requestHash))
+            throw new ApiAccessError(409);
+          const priorShift = await client.query(
+            "SELECT * FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND id=$3",
+            [orgId, branchId, prior.rows[0].shift_id],
+          );
+          const priorMovement = prior.rows[0].movement_id
+            ? (
+                await client.query(
+                  "SELECT * FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3 AND id=$4",
+                  [
+                    orgId,
+                    branchId,
+                    prior.rows[0].shift_id,
+                    prior.rows[0].movement_id,
+                  ],
+                )
+              ).rows[0]
+            : null;
+          return {
+            status: 200,
+            payload: {
+              shift: priorShift.rows[0],
+              movement: priorMovement,
+              duplicate: true,
+            },
+          };
+        }
+        let shift: Record<string, unknown>;
+        let movement: Record<string, unknown> | null = null;
+        let eventType: string;
+        let eventData: Record<string, unknown>;
+        if (isOpen) {
+          const inserted = await client.query(
+            "INSERT INTO public.cash_shifts(organization_id,branch_id,cashier_user_id,currency_code,opening_amount_minor,created_by) VALUES($1,$2,$3,$4,$5,$3) RETURNING *",
+            [orgId, branchId, identity.userId, currencyCode, openingAmount],
+          );
+          shift = inserted.rows[0];
+          eventType = "OPENED";
+          eventData = { currencyCode, openingAmountMinor: openingAmount };
+        } else {
+          const lockedShift = await client.query(
+            "SELECT * FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND id=$3 FOR UPDATE",
+            [orgId, branchId, shiftId],
+          );
+          const current = lockedShift.rows[0];
+          if (!current || current.version !== expectedVersion)
+            throw new ApiAccessError(409);
+          if (isMovement) {
+            if (current.status !== "OPEN") throw new ApiAccessError(409);
+            const drawer = await client.query(
+              "SELECT ($4::bigint+COALESCE(sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END),0))::text AS expected_minor FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3",
+              [orgId, branchId, shiftId, current.opening_amount_minor],
+            );
+            const change =
+              BigInt(movementAmount!) * (movementType === "CASH_IN" ? 1n : -1n);
+            const nextExpected = BigInt(drawer.rows[0].expected_minor) + change;
+            if (nextExpected < 0n || nextExpected > 1_000_000_000_000n)
+              throw new ApiAccessError(409, "CASH_DRAWER_LIMIT");
+            const insertedMovement = await client.query(
+              "INSERT INTO public.cash_drawer_movements(organization_id,branch_id,shift_id,movement_type,amount_minor,reason,created_by) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *",
+              [
+                orgId,
+                branchId,
+                shiftId,
+                movementType,
+                movementAmount,
+                movementReason,
+                identity.userId,
+              ],
+            );
+            movement = insertedMovement.rows[0];
+            const updated = await client.query(
+              "UPDATE public.cash_shifts SET version=version+1 WHERE organization_id=$1 AND branch_id=$2 AND id=$3 RETURNING *",
+              [orgId, branchId, shiftId],
+            );
+            shift = updated.rows[0];
+            eventType = "MOVEMENT_RECORDED";
+            eventData = {
+              movementId: movement!.id,
+              movementType,
+              amountMinor: movementAmount,
+            };
+          } else if (isBeginClose) {
+            if (current.status !== "OPEN") throw new ApiAccessError(409);
+            const expected = await client.query(
+              "SELECT ($4::bigint+COALESCE(sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END),0))::text AS expected_minor FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3",
+              [orgId, branchId, shiftId, current.opening_amount_minor],
+            );
+            const expectedMinor = expected.rows[0].expected_minor;
+            if (
+              BigInt(expectedMinor) < 0n ||
+              BigInt(expectedMinor) > 1000000000000n
+            )
+              throw new ApiAccessError(409);
+            const updated = await client.query(
+              "UPDATE public.cash_shifts SET status='CLOSING',closing_expected_minor=$4,counted_cash_minor=$5,closing_started_at=now(),version=version+1 WHERE organization_id=$1 AND branch_id=$2 AND id=$3 RETURNING *",
+              [orgId, branchId, shiftId, expectedMinor, countedAmount],
+            );
+            shift = updated.rows[0];
+            eventType = "CLOSING_STARTED";
+            eventData = {
+              expectedCashMinor: expectedMinor,
+              countedCashMinor: countedAmount,
+            };
+          } else {
+            if (current.status !== "CLOSING") throw new ApiAccessError(409);
+            const variance =
+              BigInt(current.counted_cash_minor) -
+              BigInt(current.closing_expected_minor);
+            const updated = await client.query(
+              "UPDATE public.cash_shifts SET status='CLOSED',variance_minor=$4,closed_at=now(),version=version+1 WHERE organization_id=$1 AND branch_id=$2 AND id=$3 RETURNING *",
+              [orgId, branchId, shiftId, variance.toString()],
+            );
+            shift = updated.rows[0];
+            eventType = "CLOSED";
+            eventData = { varianceMinor: variance.toString() };
+          }
+        }
+        await client.query(
+          "INSERT INTO public.cash_shift_events(organization_id,branch_id,shift_id,event_type,version,actor_user_id,event_data) VALUES($1,$2,$3,$4,$5,$6,$7)",
+          [
+            orgId,
+            branchId,
+            shift.id,
+            eventType,
+            shift.version,
+            identity.userId,
+            eventData,
+          ],
+        );
+        await client.query(
+          "INSERT INTO public.cash_shift_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,shift_id,movement_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)",
+          [
+            orgId,
+            branchId,
+            identity.userId,
+            operation,
+            idempotencyKey,
+            requestHash,
+            shift.id,
+            movement?.id ?? null,
+          ],
+        );
+        return { status: 201, payload: { shift, movement, duplicate: false } };
+      },
+    );
+    response.setHeader("Cache-Control", "no-store, private");
+    json(response, result.status, result.payload);
+    return true;
   }
   const serviceRoute =
     /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/(waiter|kitchen\/tickets)(?:\/([^/]+))?(?:\/(bill))?$/.exec(

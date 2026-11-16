@@ -58,7 +58,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     // Synthetic prerequisite identity table exists only inside this owned disposable test DB.
     await fixture.query("CREATE TABLE public.auth_users (id text PRIMARY KEY)");
     await fixture.query(
-      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('cashier_a'),('accountant_a'),('kitchen_a'),('multi_scope_a'),('outsider')",
+      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('cashier_a'),('cashier_b'),('accountant_a'),('kitchen_a'),('multi_scope_a'),('outsider')",
     );
     await migrateBusiness(fixture);
     await migrateBusiness(fixture); // An unchanged migration must be idempotent.
@@ -111,6 +111,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     await grant("owner_a", "administrator_a", "administrator", branchA);
     await grant("owner_a", "director_a", "director", null);
     await grant("owner_a", "cashier_a", "cashier", branchA);
+    await grant("owner_a", "cashier_b", "cashier", branchA);
     await grant("owner_a", "accountant_a", "accountant", branchA);
     await grant("owner_a", "kitchen_a", "kitchen", branchA);
 
@@ -138,10 +139,14 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
               "kitchen_tickets",
               "kitchen_ticket_items",
               "kitchen_ticket_events",
+              "cash_shifts",
+              "cash_shift_events",
+              "cash_drawer_movements",
+              "cash_shift_idempotency_keys",
             ],
           ],
         );
-        assert.equal(tables.rows.length, 7);
+        assert.equal(tables.rows.length, 11);
         for (const row of tables.rows) {
           assert(row.relrowsecurity && row.relforcerowsecurity);
           assert.notEqual(row.owner, "unibos_app");
@@ -851,11 +856,11 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           accountantScope.organizations[0].branches[0].navigation.map(
             (item) => item.id,
           ),
-          ["workspace"],
+          ["workspace", "shifts"],
         );
         assert.deepEqual(
           accountantScope.organizations[0].branches[0].capabilities,
-          ["orders.read", "workspace.view"],
+          ["orders.read", "shifts.read", "workspace.view"],
         );
         await grant("owner_a", "multi_scope_a", "director", null);
         await withTenantTransaction(app, "owner_b", orgB.id, (client) =>
@@ -897,6 +902,211 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           ),
         );
         actor = "cashier_a";
+        const shiftPath = `/api/v1/organizations/${orgA.id}/branches/${branchA}/cash-shifts`;
+        const openShiftKey = randomUUID();
+        const openShiftPayload = {
+          idempotencyKey: openShiftKey,
+          currencyCode: "UZS",
+          openingAmountMinor: "10000",
+        };
+        assert.equal(
+          (
+            await call(shiftPath, "POST", {
+              ...openShiftPayload,
+              idempotencyKey: randomUUID(),
+              currencyCode: "XYZ",
+            })
+          ).status,
+          400,
+        );
+        const openedResponse = await call(shiftPath, "POST", openShiftPayload);
+        assert.equal(openedResponse.status, 201);
+        const opened = await openedResponse.json();
+        assert.equal(opened.shift.status, "OPEN");
+        const shiftId = opened.shift.id;
+        await assert.rejects(
+          withTenantTransaction(app, "cashier_a", orgA.id, (client) =>
+            client.query(
+              "INSERT INTO public.cash_drawer_movements(organization_id,branch_id,shift_id,movement_type,amount_minor,reason) VALUES($1,$2,$3,'CASH_OUT',10001,'Direct SQL overdraw attempt')",
+              [orgA.id, branchA, shiftId],
+            ),
+          ),
+          { code: "23514" },
+        );
+        assert.equal(
+          (
+            await call(shiftPath + `/${shiftId}/movements`, "POST", {
+              idempotencyKey: randomUUID(),
+              expectedVersion: 1,
+              movementType: "CASH_OUT",
+              amountMinor: "10001",
+              reason: "Must not overdraw drawer",
+            })
+          ).status,
+          409,
+        );
+        const duplicateOpen = await call(shiftPath, "POST", openShiftPayload);
+        assert.equal(duplicateOpen.status, 200);
+        assert.equal((await duplicateOpen.json()).shift.id, shiftId);
+        assert.equal(
+          (
+            await call(shiftPath, "POST", {
+              ...openShiftPayload,
+              openingAmountMinor: "9000",
+            })
+          ).status,
+          409,
+        );
+        assert.equal(
+          (
+            await call(shiftPath, "POST", {
+              idempotencyKey: randomUUID(),
+              currencyCode: "UZS",
+              openingAmountMinor: "0",
+            })
+          ).status,
+          409,
+        );
+        const drawerInKey = randomUUID();
+        const drawerIn = {
+          idempotencyKey: drawerInKey,
+          expectedVersion: 1,
+          movementType: "CASH_IN",
+          amountMinor: "5000",
+          reason: "Float top-up",
+        };
+        const duplicateMovement = await Promise.all([
+          call(shiftPath + `/${shiftId}/movements`, "POST", drawerIn),
+          call(shiftPath + `/${shiftId}/movements`, "POST", drawerIn),
+        ]);
+        assert.deepEqual(
+          duplicateMovement.map((response) => response.status).sort(),
+          [200, 201],
+          await Promise.all(
+            duplicateMovement.map(async (response) => [
+              response.status,
+              await response.clone().text(),
+            ]),
+          ),
+        );
+        const movementResult = await duplicateMovement[0].json();
+        const movementRetry = await duplicateMovement[1].json();
+        assert.equal(movementResult.movement.id, movementRetry.movement.id);
+        assert.equal(
+          (
+            await call(shiftPath + `/${shiftId}/movements`, "POST", {
+              ...drawerIn,
+              amountMinor: "6000",
+            })
+          ).status,
+          409,
+        );
+        const drawerOutResponse = await call(
+          shiftPath + `/${shiftId}/movements`,
+          "POST",
+          {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 2,
+            movementType: "CASH_OUT",
+            amountMinor: "1000",
+            reason: "Petty cash",
+          },
+        );
+        assert.equal(drawerOutResponse.status, 201);
+        const beginCloseResponse = await call(
+          shiftPath + `/${shiftId}/begin-close`,
+          "POST",
+          {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 3,
+            countedCashMinor: "14000",
+          },
+        );
+        assert.equal(beginCloseResponse.status, 201);
+        const closingShift = await beginCloseResponse.json();
+        assert.equal(closingShift.shift.status, "CLOSING");
+        assert.equal(closingShift.shift.closing_expected_minor, "14000");
+        assert.equal(
+          (
+            await call(shiftPath + `/${shiftId}/movements`, "POST", {
+              idempotencyKey: randomUUID(),
+              expectedVersion: 4,
+              movementType: "CASH_IN",
+              amountMinor: "500",
+              reason: "Must fail after close begins",
+            })
+          ).status,
+          409,
+        );
+        const closeKey = randomUUID();
+        const closePayload = { idempotencyKey: closeKey, expectedVersion: 4 };
+        const closedResponse = await call(
+          shiftPath + `/${shiftId}/confirm-close`,
+          "POST",
+          closePayload,
+        );
+        assert.equal(closedResponse.status, 201);
+        const closedShift = await closedResponse.json();
+        assert.equal(closedShift.shift.status, "CLOSED");
+        assert.equal(closedShift.shift.variance_minor, "0");
+        const closeRetry = await call(
+          shiftPath + `/${shiftId}/confirm-close`,
+          "POST",
+          closePayload,
+        );
+        assert.equal(closeRetry.status, 200);
+        assert.equal((await closeRetry.json()).shift.id, shiftId);
+        const shiftSnapshot = await call(shiftPath);
+        const shiftData = await shiftSnapshot.json();
+        assert.equal(shiftData.activeShift, null);
+        assert.equal(shiftData.history[0].id, shiftId);
+        assert.equal(shiftData.history[0].expected_current_minor, "14000");
+        await assert.rejects(
+          withTenantTransaction(app, "owner_a", orgA.id, (client) =>
+            client.query(
+              "UPDATE public.cash_shifts SET status='OPEN',version=version+1 WHERE organization_id=$1 AND branch_id=$2 AND id=$3",
+              [orgA.id, branchA, shiftId],
+            ),
+          ),
+          { code: "23514" },
+        );
+        actor = "cashier_b";
+        const otherCashierSnapshot = await call(shiftPath);
+        assert.equal(otherCashierSnapshot.status, 200);
+        assert.deepEqual((await otherCashierSnapshot.json()).history, []);
+        assert.equal(
+          (
+            await call(shiftPath + `/${shiftId}/begin-close`, "POST", {
+              idempotencyKey: randomUUID(),
+              expectedVersion: 4,
+              countedCashMinor: "0",
+            })
+          ).status,
+          409,
+        );
+        actor = "accountant_a";
+        assert.equal((await call(shiftPath)).status, 200);
+        assert.equal(
+          (
+            await call(shiftPath, "POST", {
+              idempotencyKey: randomUUID(),
+              currencyCode: "UZS",
+              openingAmountMinor: "0",
+            })
+          ).status,
+          403,
+        );
+        actor = "kitchen_a";
+        assert.equal((await call(shiftPath)).status, 403);
+        actor = "cashier_a";
+        assert.equal(
+          (
+            await call(
+              `/api/v1/organizations/${orgA.id}/branches/${branchA2}/cash-shifts`,
+            )
+          ).status,
+          403,
+        );
         const payload = {
           idempotencyKey: randomUUID(),
           fulfillmentType: "DINE_IN",

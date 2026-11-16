@@ -25,6 +25,7 @@ test("workspace capabilities follow API role policy and remain scoped to supplie
   ]);
   assert.ok(cashierCapabilities.includes("orders.create"));
   assert.ok(cashierCapabilities.includes("waiter.operate"));
+  assert.ok(cashierCapabilities.includes("shifts.open"));
   assert.ok(!cashierCapabilities.includes("kitchen.operate"));
   assert.ok(!cashierCapabilities.includes("catalog.manage"));
   const kitchenCapabilities = capabilitiesForMemberships([
@@ -46,7 +47,11 @@ test("workspace capabilities follow API role policy and remain scoped to supplie
   const accountantCapabilities = capabilitiesForMemberships([
     { role: "accountant", branch_id: branch },
   ]);
-  assert.deepEqual(accountantCapabilities, ["orders.read", "workspace.view"]);
+  assert.deepEqual(accountantCapabilities, [
+    "orders.read",
+    "shifts.read",
+    "workspace.view",
+  ]);
   const waiterCapabilities = capabilitiesForMemberships([
     { role: "waiter", branch_id: branch },
   ]);
@@ -329,7 +334,7 @@ test("workspace capability endpoint derives scoped memberships from the verified
     assert.ok(!a.capabilities.includes("kitchen.operate"));
     assert.deepEqual(
       a.navigation.map((item) => item.id),
-      ["workspace", "pos", "waiter"],
+      ["workspace", "pos", "waiter", "shifts"],
     );
     const b = body.organizations.find((item) => item.id === orgB);
     assert.ok(b.branches[0].capabilities.includes("kitchen.operate"));

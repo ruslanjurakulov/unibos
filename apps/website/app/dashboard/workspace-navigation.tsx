@@ -31,6 +31,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     cashier: "Kassir",
     waiter: "Ofitsiant",
     kitchen: "Oshxona",
+    shifts: "Smenalar",
   },
   ru: {
     owner: "Владелец",
@@ -40,6 +41,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     cashier: "Кассир",
     waiter: "Официант",
     kitchen: "Кухня",
+    shifts: "Смены",
   },
   en: {
     owner: "Owner",
@@ -49,6 +51,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     cashier: "Cashier",
     waiter: "Waiter",
     kitchen: "Kitchen",
+    shifts: "Cash shifts",
   },
 };
 const copy: Record<Language, Record<string, string>> = {
@@ -60,6 +63,7 @@ const copy: Record<Language, Record<string, string>> = {
     pos: "Kassir POS",
     waiter: "Ofitsiant",
     kitchen: "Oshxona",
+    shifts: "Smenalar",
     loading: "Vakolatlar tekshirilmoqda…",
     unavailable: "Ish joyi API orqali tasdiqlanmadi",
     menu: "Navigatsiya",
@@ -77,6 +81,7 @@ const copy: Record<Language, Record<string, string>> = {
     pos: "Касса POS",
     waiter: "Официант",
     kitchen: "Кухня",
+    shifts: "Смены",
     loading: "Проверка прав доступа…",
     unavailable: "Рабочее пространство не подтверждено API",
     menu: "Навигация",
@@ -94,6 +99,7 @@ const copy: Record<Language, Record<string, string>> = {
     pos: "Cashier POS",
     waiter: "Waiter",
     kitchen: "Kitchen",
+    shifts: "Cash shifts",
     loading: "Verifying access…",
     unavailable: "Workspace was not verified by the API",
     menu: "Navigation",
@@ -109,6 +115,7 @@ const linkKey: Record<string, string> = {
   pos: "pos",
   waiter: "waiter",
   kitchen: "kitchen",
+  shifts: "shifts",
 };
 
 export default function WorkspaceNavigation({
@@ -161,9 +168,19 @@ export default function WorkspaceNavigation({
           if (active) setReady(true);
         });
     load();
+    const onLanguage = (event: Event) => {
+      const value = (event as CustomEvent<string>).detail;
+      if (value !== "uz" && value !== "ru" && value !== "en") return;
+      setLanguage(value);
+      try {
+        localStorage.setItem("unibos.workspace.language", value);
+      } catch {}
+    };
+    window.addEventListener("unibos:workspace-language", onLanguage);
     window.addEventListener("focus", load);
     return () => {
       active = false;
+      window.removeEventListener("unibos:workspace-language", onLanguage);
       window.removeEventListener("focus", load);
     };
   }, [router]);
@@ -288,6 +305,9 @@ export default function WorkspaceNavigation({
   function setLocale(value: string) {
     if (value !== "uz" && value !== "ru" && value !== "en") return;
     setLanguage(value);
+    window.dispatchEvent(
+      new CustomEvent("unibos:workspace-language", { detail: value }),
+    );
     try {
       localStorage.setItem("unibos.workspace.language", value);
     } catch {}

@@ -186,15 +186,15 @@
     z-index: 40;
     width: 100%;
     max-height: none;
-    padding: 10px 14px;
+    padding: 10px 12px;
     overflow: visible;
     border-right: 0;
     border-bottom: 1px solid #d8e3db;
   }
   .header {
-    flex-direction: row;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
     gap: 10px;
   }
   .brand {
@@ -205,9 +205,9 @@
     font-size: 8px;
   }
   .context {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
     gap: 7px;
     min-width: 0;
   }
@@ -216,8 +216,9 @@
     font-size: 9px;
   }
   .context select {
-    min-width: 86px;
-    max-width: 125px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
     min-height: 36px;
     padding: 0 5px;
     font-size: 11px;
@@ -226,10 +227,18 @@
     display: none;
   }
   .language {
-    display: none;
+    display: grid;
+    grid-column: 1 / -1;
+    min-width: 0;
+  }
+  .language select {
+    width: 100%;
+    min-height: 36px;
   }
   .mobileToggle {
     display: block;
+    grid-column: 1 / -1;
+    width: 100%;
     padding: 0 10px;
     font-size: 11px;
   }
@@ -256,7 +265,7 @@
 }
 @media (max-width: 400px) {
   .shell {
-    padding: 8px;
+    padding: 8px 10px;
   }
   .brand {
     font-size: 13px;
@@ -265,14 +274,14 @@
     font-size: 7px;
   }
   .context {
-    gap: 4px;
+    gap: 6px;
   }
   .context label {
-    max-width: 96px;
+    max-width: none;
   }
   .context select {
-    min-width: 68px;
-    max-width: 96px;
+    min-width: 0;
+    max-width: none;
   }
   .mobileToggle {
     padding: 0 7px;
