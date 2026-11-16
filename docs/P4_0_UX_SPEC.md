@@ -76,6 +76,56 @@ The API and RLS remain authoritative. Branch-scoped roles require current member
 - Cross-tenant IDs return a generic denial/not-found response and are covered by negative database/API tests.
 - Duplicate order, ticket and payment requests use stable idempotency keys scoped by tenant/action and request hash; reuse with different data is rejected.
 
+## Workflow diagrams
+
+### Cashier, waiter, kitchen and guest order entry
+
+```mermaid
+flowchart LR
+  Cashier[Cashier verbal order] --> Draft[Draft on selected table]
+  Waiter[Waiter table order] --> Draft
+  Guest[Guest opaque QR token] --> Menu[Branch menu + table]
+  Menu --> GuestDraft[Guest cart]
+  GuestDraft --> SubmitGuest[Submit with idempotency key]
+  Draft --> SubmitStaff[Submit with idempotency key]
+  SubmitGuest --> Validate[Server checks identity/token, scope, availability and current prices]
+  SubmitStaff --> Validate
+  Validate --> Persist[Persist order + snapshots + event + outbox transactionally]
+  Persist --> Ticket[Kitchen ticket for only new lines]
+  Ticket --> Queue[Branch kitchen queue]
+  Queue --> Ready[Preparing → Ready]
+  Ready --> Served[Waiter serves / guest checks status]
+  Served --> Checkout[Cashier records approved cash or payment stays unpaid]
+```
+
+### Order and payment are independent state machines
+
+```mermaid
+stateDiagram-v2
+  state Order {
+    [*] --> Draft
+    Draft --> Submitted
+    Draft --> Cancelled
+    Submitted --> Accepted
+    Accepted --> Preparing
+    Preparing --> Ready
+    Ready --> Served
+    Served --> Completed
+    Submitted --> Cancelled: authorized reason
+  }
+  state Payment {
+    [*] --> Unpaid
+    Unpaid --> Pending
+    Pending --> Confirmed
+    Pending --> Failed
+    Pending --> Unknown
+    Confirmed --> PartiallyRefunded
+    Confirmed --> Refunded
+  }
+```
+
+The diagrams describe target behavior; the P3.3 application does not yet implement these server workflows. UI-only Preview behavior must be labeled synthetic and must not report these diagrams as integrated functionality.
+
 ## State models
 
 ### Order (separate from payment)
