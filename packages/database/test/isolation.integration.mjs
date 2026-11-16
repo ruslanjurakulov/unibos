@@ -128,9 +128,19 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
         });
         const tables = await fixture.query(
           "SELECT c.relname,c.relrowsecurity,c.relforcerowsecurity,r.rolname owner FROM pg_class c JOIN pg_roles r ON r.oid=c.relowner WHERE c.relname=ANY($1::text[])",
-          [["organizations", "branches", "memberships", "audit_events"]],
+          [
+            [
+              "organizations",
+              "branches",
+              "memberships",
+              "audit_events",
+              "kitchen_tickets",
+              "kitchen_ticket_items",
+              "kitchen_ticket_events",
+            ],
+          ],
         );
-        assert.equal(tables.rows.length, 4);
+        assert.equal(tables.rows.length, 7);
         for (const row of tables.rows) {
           assert(row.relrowsecurity && row.relforcerowsecurity);
           assert.notEqual(row.owner, "unibos_app");
@@ -637,7 +647,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     );
 
     await t.test(
-      "P4.2 cashier order creation is atomic, idempotent and branch scoped",
+      "P4.2/P4.3 orders, tickets and waiter additions are transactional and isolated",
       async () => {
         const seed = await withTenantTransaction(
           app,
@@ -793,6 +803,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           const result = await a.json();
           const duplicate = await b.json();
           assert.equal(result.order.id, duplicate.order.id);
+          assert.match(result.ticketId, /^[0-9a-f-]{36}$/i);
           assert.equal(result.order.total_minor, "18750");
           assert.equal(result.items[0].quantity, "1.500");
           assert.equal(result.items[0].product_name_snapshot, "Order soup");
@@ -857,6 +868,281 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
                 )
               ).rows[0].id,
           );
+          const kitchenPath = `/api/v1/organizations/${orgA.id}/branches/${branchA}/kitchen/tickets`;
+          actor = "kitchen_a";
+          const kitchenQueue = await (await call(kitchenPath)).json();
+          assert.equal(kitchenQueue.tickets.length, 1);
+          assert.equal(kitchenQueue.tickets[0].id, result.ticketId);
+          assert.deepEqual(kitchenQueue.tickets[0].items[0], {
+            product_name_snapshot: "Order soup",
+            quantity: "1.500",
+            notes: "No herbs",
+          });
+          assert.equal("total_minor" in kitchenQueue.tickets[0], false);
+          const transition = (
+            id,
+            expectedVersion,
+            action,
+            actorId,
+            url = kitchenPath,
+          ) => {
+            actor = actorId;
+            return call(`${url}/${id}`, "PATCH", {
+              idempotencyKey: randomUUID(),
+              expectedVersion,
+              transition: action,
+              ...(action === "CANCEL" ? { reason: "Test cancellation" } : {}),
+            });
+          };
+          const waiterPath = `/api/v1/organizations/${orgA.id}/branches/${branchA}/waiter`;
+          const kitchenTicketPath = `${kitchenPath}/${result.ticketId}`;
+          actor = "kitchen_a";
+          const accept = {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 1,
+            transition: "ACCEPT",
+          };
+          assert.equal(
+            (await call(kitchenTicketPath, "PATCH", accept)).status,
+            200,
+          );
+          assert.equal(
+            (await call(kitchenTicketPath, "PATCH", accept)).status,
+            200,
+          );
+          const cancelWithoutReason = await call(kitchenTicketPath, "PATCH", {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 2,
+            transition: "CANCEL",
+          });
+          assert.equal(cancelWithoutReason.status, 400);
+          actor = "staff_a";
+          assert.equal(
+            (
+              await call(`${waiterPath}/${result.ticketId}`, "PATCH", {
+                idempotencyKey: randomUUID(),
+                expectedVersion: 2,
+                transition: "SERVE",
+              })
+            ).status,
+            409,
+          );
+          actor = "staff_a";
+          const addPayload = {
+            idempotencyKey: randomUUID(),
+            items: [
+              {
+                productId: seed.product,
+                quantity: "1",
+                priceVersion: currentPrice,
+                notes: "Extra herbs",
+              },
+            ],
+          };
+          const addedResponse = await call(
+            `${waiterPath}/${result.order.id}`,
+            "POST",
+            addPayload,
+          );
+          assert.equal(addedResponse.status, 201);
+          const added = await addedResponse.json();
+          assert.match(added.ticketId, /^[0-9a-f-]{36}$/i);
+          const staleWaiterPrice = await call(
+            `${waiterPath}/${result.order.id}`,
+            "POST",
+            {
+              idempotencyKey: randomUUID(),
+              items: [
+                {
+                  productId: seed.product,
+                  quantity: "1",
+                  priceVersion: seed.price,
+                },
+              ],
+            },
+          );
+          assert.equal(staleWaiterPrice.status, 409);
+          const repeated = await call(
+            `${waiterPath}/${result.order.id}`,
+            "POST",
+            addPayload,
+          );
+          assert.equal(repeated.status, 200);
+          assert.equal((await repeated.json()).ticketId, added.ticketId);
+          const conflicting = await call(
+            `${waiterPath}/${result.order.id}`,
+            "POST",
+            {
+              ...addPayload,
+              items: [{ ...addPayload.items[0], quantity: "2" }],
+            },
+          );
+          assert.equal(conflicting.status, 409);
+          const concurrentPayloads = [0, 1].map(() => ({
+            idempotencyKey: randomUUID(),
+            items: [
+              {
+                productId: seed.product,
+                quantity: "1",
+                priceVersion: currentPrice,
+              },
+            ],
+          }));
+          const concurrentAdds = await Promise.all(
+            concurrentPayloads.map((body) =>
+              call(`${waiterPath}/${result.order.id}`, "POST", body),
+            ),
+          );
+          assert.deepEqual(
+            concurrentAdds.map((response) => response.status),
+            [201, 201],
+          );
+          actor = "kitchen_a";
+          const queueAfterAdd = await (await call(kitchenPath)).json();
+          assert.equal(queueAfterAdd.tickets.length, 4);
+          assert.equal(
+            queueAfterAdd.tickets.find(
+              (ticket) => ticket.id === result.ticketId,
+            ).items.length,
+            1,
+          );
+          assert.equal(
+            queueAfterAdd.tickets.find((ticket) => ticket.id === added.ticketId)
+              .items.length,
+            1,
+          );
+          assert.equal(
+            (await call(`${waiterPath}/${result.order.id}`, "POST", addPayload))
+              .status,
+            403,
+          );
+          await assert.rejects(
+            withTenantTransaction(app, "staff_a", orgA.id, (c) =>
+              c.query("UPDATE kitchen_tickets SET status='PREPARING',version=version+1 WHERE id=$1", [result.ticketId]),
+            ),
+            { code: "42501" },
+          );
+          const cancelAdd = {
+            idempotencyKey: randomUUID(),
+            expectedVersion: 1,
+            transition: "CANCEL",
+            reason: "Guest removed this item",
+          };
+          const cancelPath = `${kitchenPath}/${added.ticketId}`;
+          assert.equal(
+            (await call(cancelPath, "PATCH", cancelAdd)).status,
+            200,
+          );
+          assert.equal(
+            (await call(cancelPath, "PATCH", cancelAdd)).status,
+            200,
+          );
+          const cancellation = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query(
+                "SELECT reason,to_status FROM kitchen_ticket_events WHERE ticket_id=$1 AND version=2",
+                [added.ticketId],
+              ),
+          );
+          assert.deepEqual(cancellation.rows[0], {
+            reason: "Guest removed this item",
+            to_status: "CANCELLED",
+          });
+          assert.equal(
+            (await transition(result.ticketId, 1, "START", "kitchen_a")).status,
+            409,
+          );
+          assert.equal(
+            (await transition(result.ticketId, 2, "START", "kitchen_a")).status,
+            200,
+          );
+          assert.equal(
+            (await transition(result.ticketId, 3, "READY", "kitchen_a")).status,
+            200,
+          );
+          await assert.rejects(
+            withTenantTransaction(app, "kitchen_a", orgA.id, (c) =>
+              c.query("UPDATE kitchen_tickets SET status='SERVED',version=version+1 WHERE id=$1", [result.ticketId]),
+            ),
+            { code: "42501" },
+          );
+          actor = "staff_a";
+          const served = await call(
+            `${waiterPath}/${result.ticketId}`,
+            "PATCH",
+            {
+              idempotencyKey: randomUUID(),
+              expectedVersion: 4,
+              transition: "SERVE",
+            },
+          );
+          assert.equal(served.status, 200);
+          const history = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query(
+                "SELECT event_type,to_status,version FROM kitchen_ticket_events WHERE organization_id=$1 AND branch_id=$2 AND ticket_id=$3 ORDER BY version",
+                [orgA.id, branchA, result.ticketId],
+              ),
+          );
+          assert.deepEqual(history.rows, [
+            { event_type: "TICKET_CREATED", to_status: "QUEUED", version: 1 },
+            { event_type: "STATUS_CHANGED", to_status: "ACCEPTED", version: 2 },
+            {
+              event_type: "STATUS_CHANGED",
+              to_status: "PREPARING",
+              version: 3,
+            },
+            { event_type: "STATUS_CHANGED", to_status: "READY", version: 4 },
+            { event_type: "STATUS_CHANGED", to_status: "SERVED", version: 5 },
+          ]);
+          await assert.rejects(
+            withTenantTransaction(app, "owner_a", orgA.id, (c) =>
+              c.query(
+                "UPDATE kitchen_ticket_events SET reason='forged' WHERE ticket_id=$1",
+                [result.ticketId],
+              ),
+            ),
+            { code: "42501" },
+          );
+          actor = "kitchen_a";
+          assert.equal(
+            (
+              await call(
+                `/api/v1/organizations/${orgA.id}/branches/${branchA2}/kitchen/tickets`,
+              )
+            ).status,
+            403,
+          );
+          assert.equal(
+            (
+              await call(
+                `/api/v1/organizations/${orgB.id}/branches/${branchB}/kitchen/tickets`,
+              )
+            ).status,
+            403,
+          );
+          actor = "staff_a";
+          const waiterActive = await (await call(waiterPath)).json();
+          assert.equal(waiterActive.mode, "INTEGRATED");
+          assert.equal(waiterActive.orders.length >= 1, true);
+          assert.equal("total_minor" in waiterActive.orders[0], false);
+          const billKey = randomUUID();
+          const billPath = `${waiterPath}/${result.order.id}/bill`;
+          assert.equal(
+            (await call(billPath, "POST", { idempotencyKey: billKey })).status,
+            202,
+          );
+          assert.equal(
+            (await call(billPath, "POST", { idempotencyKey: billKey })).status,
+            200,
+          );
+          actor = "cashier_a";
           const pickup = await call(path, "POST", {
             idempotencyKey: randomUUID(),
             fulfillmentType: "PICKUP",
@@ -936,7 +1222,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
                 ]),
               )
             ).rows.length,
-            1,
+            10,
           );
           assert.equal(
             (

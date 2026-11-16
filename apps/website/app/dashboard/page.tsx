@@ -177,6 +177,13 @@ export default function DashboardPage() {
           {process.env.NEXT_PUBLIC_AUTH_CONFIGURED === "true" && (
             <Link href="/dashboard/pos">Cashier POS</Link>
           )}
+          {process.env.NEXT_PUBLIC_AUTH_CONFIGURED === "true" && (
+            <Link href="/dashboard/waiter">Waiter</Link>
+          )}
+          {process.env.NEXT_PUBLIC_AUTH_CONFIGURED === "true" && (
+            <Link href="/dashboard/kitchen">Kitchen</Link>
+          )}
+          <Link href="/demo/service">P4.3 service demo</Link>
           <Link href="/demo/workspace">Product demo</Link>
           <button
             className="theme-toggle"

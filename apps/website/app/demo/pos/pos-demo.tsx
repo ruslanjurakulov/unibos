@@ -227,6 +227,7 @@ export default function PosDemo() {
           tizimiga yozilmaydi.
         </span>
         <a href="/demo/operations">Katalog demo</a>
+        <a href="/demo/service">Oshxona va ofitsiant demo</a>
       </div>
       <div className={styles.workspace}>
         <section className={styles.catalog} aria-label="Mahsulotlar katalogi">

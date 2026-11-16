@@ -325,6 +325,42 @@ function parseOrderRequest(body: Record<string, unknown>) {
   return { idempotencyKey, fulfillmentType, tableId, items, note } as const;
 }
 
+function parseOrderAddition(body: Record<string, unknown>) {
+  exactKeys(body, ["idempotencyKey", "items"], ["idempotencyKey", "items"]);
+  const idempotencyKey = validateUuid(stringField(body, "idempotencyKey", 36));
+  if (
+    !Array.isArray(body.items) ||
+    body.items.length < 1 ||
+    body.items.length > 100
+  )
+    throw new ApiAccessError(400);
+  const items = body.items.map((raw) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+      throw new ApiAccessError(400);
+    const item = raw as Record<string, unknown>;
+    exactKeys(
+      item,
+      ["productId", "quantity", "priceVersion", "notes"],
+      ["productId", "quantity", "priceVersion"],
+    );
+    const quantity = stringField(item, "quantity", 12);
+    if (
+      !/^(?:0|[1-9]\d{0,3})(?:\.\d{1,3})?$/.test(quantity) ||
+      /^0(?:\.0{1,3})?$/.test(quantity)
+    )
+      throw new ApiAccessError(400);
+    return {
+      productId: validateUuid(stringField(item, "productId", 36)),
+      quantity,
+      priceVersion: validateUuid(stringField(item, "priceVersion", 36)),
+      notes: optionalStringField(item, "notes", 300),
+    };
+  });
+  if (new Set(items.map((i) => i.productId)).size !== items.length)
+    throw new ApiAccessError(400);
+  return { idempotencyKey, items };
+}
+
 function quantityMilli(quantity: string): bigint {
   const [whole = "0", fraction = ""] = quantity.split(".");
   return BigInt(whole) * 1000n + BigInt((fraction + "000").slice(0, 3));
@@ -346,6 +382,31 @@ async function readOrder(
     [orgId, branchId, orderId],
   );
   return { order: order.rows[0], items: items.rows };
+}
+
+async function createKitchenTicket(
+  client: PoolClient,
+  orgId: string,
+  branchId: string,
+  orderId: string,
+  actorId: string,
+  itemIds: readonly string[],
+) {
+  const next = await client.query<{ ticket_number: number }>(
+    "SELECT COALESCE(MAX(ticket_number),0)+1 ticket_number FROM public.kitchen_tickets WHERE organization_id=$1 AND branch_id=$2 AND order_id=$3",
+    [orgId, branchId, orderId],
+  );
+  const ticket = await client.query<{ id: string }>(
+    "INSERT INTO public.kitchen_tickets(organization_id,branch_id,order_id,ticket_number,created_by) VALUES($1,$2,$3,$4,$5) RETURNING id",
+    [orgId, branchId, orderId, next.rows[0]!.ticket_number, actorId],
+  );
+  const ticketId = ticket.rows[0]!.id;
+  for (const itemId of itemIds)
+    await client.query(
+      "INSERT INTO public.kitchen_ticket_items(organization_id,branch_id,ticket_id,order_id,order_item_id) VALUES($1,$2,$3,$4,$5)",
+      [orgId, branchId, ticketId, orderId, itemId],
+    );
+  return ticketId;
 }
 
 async function createCashierOrder(
@@ -382,8 +443,9 @@ async function createCashierOrder(
   const idempotency = await client.query<{
     request_hash: Buffer;
     order_id: string;
+    result_ticket_id: string;
   }>(
-    "SELECT request_hash,order_id FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='CREATE_ORDER' AND idempotency_key=$4",
+    "SELECT request_hash,order_id,result_ticket_id FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='CREATE_ORDER' AND idempotency_key=$4",
     [orgId, branchId, identity.userId, body.idempotencyKey],
   );
   const existing = idempotency.rows[0];
@@ -392,6 +454,7 @@ async function createCashierOrder(
   if (existing)
     return {
       ...(await readOrder(client, orgId, branchId, existing.order_id)),
+      ticketId: existing.result_ticket_id,
       duplicate: true,
     };
   if (body.tableId) {
@@ -470,9 +533,10 @@ async function createCashierOrder(
     ],
   );
   const orderId = order.rows[0]!.id;
-  for (const item of resolved)
-    await client.query(
-      "INSERT INTO public.order_items(organization_id,branch_id,order_id,product_id,product_name_snapshot,unit_price_minor,currency_code,quantity,line_total_minor,product_price_version,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8::numeric,$9,$10,$11)",
+  const itemIds: string[] = [];
+  for (const item of resolved) {
+    const inserted = await client.query<{ id: string }>(
+      "INSERT INTO public.order_items(organization_id,branch_id,order_id,product_id,product_name_snapshot,unit_price_minor,currency_code,quantity,line_total_minor,product_price_version,notes) VALUES($1,$2,$3,$4,$5,$6,$7,$8::numeric,$9,$10,$11) RETURNING id",
       [
         orgId,
         branchId,
@@ -487,6 +551,16 @@ async function createCashierOrder(
         item.notes,
       ],
     );
+    itemIds.push(inserted.rows[0]!.id);
+  }
+  const ticketId = await createKitchenTicket(
+    client,
+    orgId,
+    branchId,
+    orderId,
+    identity.userId,
+    itemIds,
+  );
   await client.query(
     "INSERT INTO public.order_events(organization_id,branch_id,order_id,event_type,actor_user_id,event_data) VALUES($1,$2,$3,'ORDER_SUBMITTED',$4,$5::jsonb)",
     [
@@ -498,7 +572,7 @@ async function createCashierOrder(
     ],
   );
   await client.query(
-    "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id) VALUES($1,$2,$3,'CREATE_ORDER',$4,$5,$6)",
+    "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id,result_ticket_id) VALUES($1,$2,$3,'CREATE_ORDER',$4,$5,$6,$7)",
     [
       orgId,
       branchId,
@@ -506,10 +580,12 @@ async function createCashierOrder(
       body.idempotencyKey,
       requestHash,
       orderId,
+      ticketId,
     ],
   );
   return {
     ...(await readOrder(client, orgId, branchId, orderId)),
+    ticketId,
     duplicate: false,
   };
 }
@@ -594,6 +670,417 @@ export async function handleSecurityRoute(
       json(response, 201, { organization });
       return true;
     }
+  }
+  const serviceRoute =
+    /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/(waiter|kitchen\/tickets)(?:\/([^/]+))?(?:\/(bill))?$/.exec(
+      path,
+    );
+  if (serviceRoute) {
+    const orgId = validateUuid(serviceRoute[1] ?? "");
+    const branchId = validateUuid(serviceRoute[2] ?? "");
+    const surface = serviceRoute[3] ?? "";
+    const ticketId = serviceRoute[4] ? validateUuid(serviceRoute[4]) : null;
+    const action = serviceRoute[5] ?? null;
+    const method = request.method ?? "GET";
+    const isKitchen = surface === "kitchen/tickets";
+    if (
+      (isKitchen &&
+        !(
+          (method === "GET" && !ticketId) ||
+          (method === "PATCH" && ticketId && !action)
+        )) ||
+      (!isKitchen &&
+        !(
+          (method === "GET" && !ticketId) ||
+          (method === "POST" &&
+            ticketId &&
+            (action === null || action === "bill")) ||
+          (method === "PATCH" && ticketId && !action)
+        ))
+    )
+      throw new ApiAccessError(404);
+    const body =
+      method === "POST" || method === "PATCH"
+        ? await readJson(request)
+        : undefined;
+    const result = await withTenantTransaction(
+      options.pool,
+      identity.userId,
+      orgId,
+      async (client) => {
+        const memberships = await actorMemberships(
+          client,
+          orgId,
+          identity.userId,
+        );
+        if (!canAccessBranch(memberships, branchId))
+          throw new ApiAccessError(403);
+        const roles = memberships
+          .filter((m) => m.branch_id === branchId)
+          .map((m) => m.role);
+        const orgOwner = memberships.some(
+          (m) => m.branch_id === null && ["owner", "director"].includes(m.role),
+        );
+        const canWait =
+          orgOwner ||
+          roles.some((r) => ["waiter", "cashier", "administrator"].includes(r));
+        const canKitchen =
+          orgOwner ||
+          roles.some((r) => ["kitchen", "administrator"].includes(r));
+        if ((isKitchen && !canKitchen) || (!isKitchen && !canWait))
+          throw new ApiAccessError(403);
+        if (method === "GET" && isKitchen) {
+          const rows = await client.query(
+            "SELECT * FROM private.staff_ticket_context($1,$2,NULL) ORDER BY created_at,id LIMIT 200",
+            [orgId, branchId],
+          );
+          const tickets = [];
+          for (const row of rows.rows) {
+            const items = await client.query(
+              "SELECT * FROM private.staff_ticket_items($1,$2,$3)",
+              [orgId, branchId, row.id],
+            );
+            tickets.push({ ...row, items: items.rows });
+          }
+          return { status: 200, payload: { tickets, mode: "INTEGRATED" } };
+        }
+        if (method === "GET") {
+          const branch = await client.query(
+            "SELECT id,name FROM public.branches WHERE organization_id=$1 AND id=$2",
+            [orgId, branchId],
+          );
+          const tables = await client.query(
+            "SELECT id,table_code,display_name,seats,status FROM public.restaurant_tables WHERE organization_id=$1 AND branch_id=$2 AND active ORDER BY table_code",
+            [orgId, branchId],
+          );
+          const products = await client.query(
+            "SELECT p.id,p.name,p.description,p.image_key,p.category_id,c.name category_name,COALESCE(a.available,true) available,v.id price_version,v.price_minor::text,currency_code FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT id,price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=clock_timestamp() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.active AND c.active ORDER BY c.sort_order,p.sort_order,p.name LIMIT 1000",
+            [orgId, branchId],
+          );
+          const orders = await client.query(
+            "SELECT * FROM private.staff_active_orders($1,$2) ORDER BY created_at DESC LIMIT 200",
+            [orgId, branchId],
+          );
+          const ticketRows = await client.query(
+            "SELECT * FROM private.staff_ticket_context($1,$2,NULL) ORDER BY created_at,id LIMIT 200",
+            [orgId, branchId],
+          );
+          if (!branch.rows[0]) throw new ApiAccessError(404);
+          const tickets = [];
+          for (const row of ticketRows.rows)
+            tickets.push({
+              ...row,
+              items: (
+                await client.query(
+                  "SELECT * FROM private.staff_ticket_items($1,$2,$3)",
+                  [orgId, branchId, row.id],
+                )
+              ).rows,
+            });
+          return {
+            status: 200,
+            payload: {
+              branch: branch.rows[0],
+              tables: tables.rows,
+              products: products.rows,
+              orders: orders.rows,
+              tickets,
+              mode: "INTEGRATED",
+            },
+          };
+        }
+        if (method === "POST" && body && ticketId && action === "bill") {
+          requireMfa(identity);
+          exactKeys(body, ["idempotencyKey"], ["idempotencyKey"]);
+          const key = validateUuid(stringField(body, "idempotencyKey", 36));
+          const requestHash = createHash("sha256")
+            .update(
+              JSON.stringify({ operation: "REQUEST_BILL", orderId: ticketId }),
+            )
+            .digest();
+          await client.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+            [`${orgId}:${branchId}:${identity.userId}:REQUEST_BILL:${key}`],
+          );
+          const previous = await client.query(
+            "SELECT request_hash FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='REQUEST_BILL' AND idempotency_key=$4",
+            [orgId, branchId, identity.userId, key],
+          );
+          if (previous.rows[0]) {
+            if (!previous.rows[0].request_hash.equals(requestHash))
+              throw new ApiAccessError(409, "IDEMPOTENCY_KEY_REUSED");
+            return {
+              status: 200,
+              payload: { orderId: ticketId, requested: true, duplicate: true },
+            };
+          }
+          const order = await client.query(
+            "SELECT id,status FROM private.staff_order_context($1,$2,$3)",
+            [orgId, branchId, ticketId],
+          );
+          if (!order.rows[0]) throw new ApiAccessError(404);
+          if (
+            !["SUBMITTED", "ACCEPTED", "PREPARING", "READY", "SERVED"].includes(
+              order.rows[0].status,
+            )
+          )
+            throw new ApiAccessError(409, "ORDER_NOT_OPEN");
+          await client.query(
+            "INSERT INTO public.order_events(organization_id,branch_id,order_id,event_type,actor_user_id,event_data) VALUES($1,$2,$3,'BILL_REQUESTED',$4,'{}'::jsonb)",
+            [orgId, branchId, ticketId, identity.userId],
+          );
+          await client.query(
+            "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id) VALUES($1,$2,$3,'REQUEST_BILL',$4,$5,$6)",
+            [orgId, branchId, identity.userId, key, requestHash, ticketId],
+          );
+          return {
+            status: 202,
+            payload: { orderId: ticketId, requested: true, duplicate: false },
+          };
+        }
+        if (method === "POST" && body && ticketId) {
+          requireMfa(identity);
+          const parsed = parseOrderAddition(body);
+          const lockKey = `${orgId}:${branchId}:${identity.userId}:ADD_ORDER_ITEMS:${parsed.idempotencyKey}`;
+          await client.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+            [lockKey],
+          );
+          const normalized = {
+            orderId: ticketId,
+            items: [...parsed.items].sort((a, b) =>
+              a.productId.localeCompare(b.productId),
+            ),
+          };
+          const hash = createHash("sha256")
+            .update(JSON.stringify(normalized))
+            .digest();
+          const previous = await client.query(
+            "SELECT request_hash,result_ticket_id FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='ADD_ORDER_ITEMS' AND idempotency_key=$4",
+            [orgId, branchId, identity.userId, parsed.idempotencyKey],
+          );
+          if (previous.rows[0]) {
+            if (!previous.rows[0].request_hash.equals(hash))
+              throw new ApiAccessError(409, "IDEMPOTENCY_KEY_REUSED");
+            return {
+              status: 200,
+              payload: {
+                ticketId: previous.rows[0].result_ticket_id,
+                duplicate: true,
+              },
+            };
+          }
+          const order = await client.query(
+            "SELECT id,status,currency_code FROM private.lock_staff_order($1,$2,$3)",
+            [orgId, branchId, ticketId],
+          );
+          const orderRow = order.rows[0];
+          if (!orderRow) throw new ApiAccessError(404);
+          if (
+            !["SUBMITTED", "ACCEPTED", "PREPARING", "READY"].includes(
+              orderRow.status,
+            )
+          )
+            throw new ApiAccessError(409, "ORDER_NOT_OPEN");
+          let subtotal = 0n;
+          const resolved = [];
+          for (const item of parsed.items) {
+            const locked = await client.query(
+              "SELECT private.lock_order_product($1,$2,$3) available",
+              [orgId, branchId, item.productId],
+            );
+            if (!locked.rows[0]?.available)
+              throw new ApiAccessError(409, "PRODUCT_UNAVAILABLE");
+            const p = await client.query(
+              "SELECT p.name,v.price_minor::text,v.currency_code,v.id price_version,COALESCE(a.available,true) available FROM public.products p JOIN public.product_categories c ON c.organization_id=p.organization_id AND c.id=p.category_id LEFT JOIN public.branch_product_availability a ON a.organization_id=p.organization_id AND a.branch_id=$2 AND a.product_id=p.id LEFT JOIN LATERAL(SELECT id,price_minor,currency_code FROM public.product_price_versions WHERE organization_id=p.organization_id AND branch_id=$2 AND product_id=p.id AND effective_at<=clock_timestamp() ORDER BY effective_at DESC,id DESC LIMIT 1)v ON true WHERE p.organization_id=$1 AND p.id=$3 AND p.active AND c.active",
+              [orgId, branchId, item.productId],
+            );
+            const row = p.rows[0];
+            if (!row?.available || !row.price_version)
+              throw new ApiAccessError(409, "PRODUCT_UNAVAILABLE");
+            if (row.price_version !== item.priceVersion)
+              throw new ApiAccessError(409, "STALE_PRICE");
+            if (row.currency_code !== orderRow.currency_code)
+              throw new ApiAccessError(409, "CURRENCY_MISMATCH");
+            const line =
+              (BigInt(row.price_minor) * quantityMilli(item.quantity) + 500n) /
+              1000n;
+            subtotal += line;
+            if (subtotal > 9000000000000000n)
+              throw new ApiAccessError(400, "ORDER_TOTAL_OUT_OF_RANGE");
+            resolved.push({
+              ...item,
+              name: row.name,
+              price: row.price_minor,
+              currency: row.currency_code,
+              line: line.toString(),
+            });
+          }
+          const ids = [];
+          for (const item of resolved) {
+            const inserted = await client.query<{ id: string }>(
+              "SELECT id FROM private.add_staff_order_item($1,$2,$3,$4,$5::numeric,$6,$7)",
+              [
+                orgId,
+                branchId,
+                ticketId,
+                item.productId,
+                item.quantity,
+                item.priceVersion,
+                item.notes,
+              ],
+            );
+            ids.push(inserted.rows[0]!.id);
+          }
+          await client.query(
+            "SELECT private.recalculate_order_total($1,$2,$3)",
+            [orgId, branchId, ticketId],
+          );
+          const newTicketId = await createKitchenTicket(
+            client,
+            orgId,
+            branchId,
+            ticketId,
+            identity.userId,
+            ids,
+          );
+          await client.query(
+            "SELECT private.recalculate_order_status($1,$2,$3)",
+            [orgId, branchId, ticketId],
+          );
+          await client.query(
+            "INSERT INTO public.order_events(organization_id,branch_id,order_id,event_type,actor_user_id,event_data) VALUES($1,$2,$3,'ORDER_ITEMS_ADDED',$4,$5::jsonb)",
+            [
+              orgId,
+              branchId,
+              ticketId,
+              identity.userId,
+              JSON.stringify({ itemCount: ids.length, ticketId: newTicketId }),
+            ],
+          );
+          await client.query(
+            "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id,result_ticket_id) VALUES($1,$2,$3,'ADD_ORDER_ITEMS',$4,$5,$6,$7)",
+            [
+              orgId,
+              branchId,
+              identity.userId,
+              parsed.idempotencyKey,
+              hash,
+              ticketId,
+              newTicketId,
+            ],
+          );
+          return {
+            status: 201,
+            payload: { ticketId: newTicketId, duplicate: false },
+          };
+        }
+        if (method === "PATCH" && body && ticketId) {
+          requireMfa(identity);
+          exactKeys(
+            body,
+            ["idempotencyKey", "expectedVersion", "transition", "reason"],
+            ["idempotencyKey", "expectedVersion", "transition"],
+          );
+          const key = validateUuid(stringField(body, "idempotencyKey", 36));
+          const expected = body.expectedVersion;
+          const transition = body.transition;
+          const reason = optionalStringField(body, "reason", 300);
+          if (
+            !Number.isInteger(expected) ||
+            Number(expected) < 1 ||
+            !["ACCEPT", "START", "READY", "SERVE", "CANCEL"].includes(
+              String(transition),
+            )
+          )
+            throw new ApiAccessError(400);
+          if (transition === "CANCEL" && !reason) throw new ApiAccessError(400);
+          const requestHash = createHash("sha256")
+            .update(JSON.stringify({ ticketId, expected, transition, reason }))
+            .digest();
+          await client.query(
+            "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+            [
+              `${orgId}:${branchId}:${identity.userId}:TRANSITION_TICKET:${key}`,
+            ],
+          );
+          const previous = await client.query(
+            "SELECT request_hash,result_ticket_id FROM public.order_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='TRANSITION_TICKET' AND idempotency_key=$4",
+            [orgId, branchId, identity.userId, key],
+          );
+          if (previous.rows[0]) {
+            if (!previous.rows[0].request_hash.equals(requestHash))
+              throw new ApiAccessError(409, "IDEMPOTENCY_KEY_REUSED");
+            return { status: 200, payload: { ticketId, duplicate: true } };
+          }
+          const locked = await client.query(
+            "SELECT status,version,order_id FROM public.kitchen_tickets WHERE organization_id=$1 AND branch_id=$2 AND id=$3 FOR UPDATE",
+            [orgId, branchId, ticketId],
+          );
+          const current = locked.rows[0];
+          if (!current) throw new ApiAccessError(404);
+          if (current.version !== expected)
+            throw new ApiAccessError(409, "STALE_TICKET");
+          const nextByTransition: Record<string, string> = {
+            ACCEPT: "ACCEPTED",
+            START: "PREPARING",
+            READY: "READY",
+            SERVE: "SERVED",
+            CANCEL: "CANCELLED",
+          };
+          const next = nextByTransition[String(transition)]!;
+          const legal: Record<string, string[]> = {
+            QUEUED: ["ACCEPTED", "CANCELLED"],
+            ACCEPTED: ["PREPARING", "CANCELLED"],
+            PREPARING: ["READY", "CANCELLED"],
+            READY: ["SERVED"],
+            SERVED: [],
+            CANCELLED: [],
+          };
+          if (!legal[current.status]?.includes(next))
+            throw new ApiAccessError(409, "INVALID_TRANSITION");
+          if (
+            (transition === "SERVE" && !canWait) ||
+            (transition !== "SERVE" && (!isKitchen || !canKitchen))
+          )
+            throw new ApiAccessError(403);
+          await client.query(
+            "UPDATE public.kitchen_tickets SET status=$1,cancel_reason=$2,version=version+1,updated_at=now() WHERE organization_id=$3 AND branch_id=$4 AND id=$5",
+            [
+              next,
+              next === "CANCELLED" ? reason : null,
+              orgId,
+              branchId,
+              ticketId,
+            ],
+          );
+          await client.query(
+            "INSERT INTO public.order_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,order_id,result_ticket_id) VALUES($1,$2,$3,'TRANSITION_TICKET',$4,$5,$6,$7)",
+            [
+              orgId,
+              branchId,
+              identity.userId,
+              key,
+              requestHash,
+              current.order_id,
+              ticketId,
+            ],
+          );
+          return {
+            status: 200,
+            payload: {
+              ticketId,
+              status: next,
+              version: Number(expected) + 1,
+              duplicate: false,
+            },
+          };
+        }
+        throw new ApiAccessError(404);
+      },
+    );
+    json(response, result.status, result.payload);
+    return true;
   }
   const orderRoute =
     /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/(pos|orders)(?:\/([^/]+))?$/.exec(

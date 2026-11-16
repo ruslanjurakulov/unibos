@@ -1,0 +1,376 @@
+.page {
+  min-height: 100vh;
+  background: #f3f6f4;
+  color: #1f2937;
+  font-family: var(--sans, Inter, Arial, sans-serif);
+  --green: #0f3d32;
+  --gold: #c9ae78;
+  --line: #dfe7e2;
+  --muted: #6b7871;
+}
+.dark {
+  background: #17211d;
+  color: #f7f4ec;
+  --line: #34463d;
+  --muted: #b8c3bc;
+}
+.header {
+  min-height: 70px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px clamp(16px, 4vw, 56px);
+  gap: 20px;
+}
+.dark .header,
+.dark .panel {
+  background: #202e28;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+  color: var(--green);
+  font-weight: 750;
+}
+.dark .brand {
+  color: #d8e3db;
+}
+.brand img {
+  width: 32px;
+  height: 32px;
+}
+.brand span {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #758179;
+}
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.headerActions label {
+  display: grid;
+  gap: 3px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.headerActions select {
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 0 8px;
+}
+.wrap {
+  max-width: 1440px;
+  margin: auto;
+  padding: clamp(20px, 4vw, 48px);
+}
+.heading,
+.panelHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+.eyebrow,
+.kicker {
+  font-size: 10px;
+  font-weight: 750;
+  letter-spacing: 0.12em;
+  color: #81714f;
+}
+.heading h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  margin: 8px 0;
+}
+.heading p:not(.eyebrow) {
+  color: var(--muted);
+}
+.badge {
+  padding: 8px 11px;
+  border-radius: 6px;
+  background: #e9dfcc;
+  color: #67552f;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.alert {
+  margin: 22px 0;
+  background: #f8f1e3;
+  color: #5e543f;
+  border: 1px solid #ebdebf;
+  border-radius: 9px;
+  padding: 13px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.alert strong {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-right: 6px;
+}
+.roles {
+  display: flex;
+  gap: 8px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #eaf0ec;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+}
+.dark .roles {
+  background: #202e28;
+}
+.roles button,
+.secondary,
+.primary {
+  font: inherit;
+  cursor: pointer;
+  border-radius: 7px;
+  min-height: 44px;
+  padding: 0 16px;
+}
+.roles button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 700;
+}
+.roles .selected {
+  background: #0f3d32;
+  color: white;
+  box-shadow: 0 2px 6px #0f3d3230;
+}
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(280px, 0.8fr);
+  gap: 18px;
+  margin-top: 18px;
+}
+.panel {
+  min-width: 0;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 7px 22px #19382a08;
+}
+.panel h2 {
+  font-size: 18px;
+  margin: 7px 0;
+}
+.connection {
+  font-size: 9px;
+  color: #63736b;
+  border: 1px solid var(--line);
+  padding: 6px 8px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+.connection i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c9ae78;
+  margin-right: 4px;
+}
+.cashierActions {
+  display: grid;
+  gap: 15px;
+  margin-top: 20px;
+}
+.cashierActions p {
+  display: grid;
+  gap: 5px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin: 0;
+}
+.cashierActions p span,
+.cashierActions small {
+  font-size: 13px;
+  color: var(--muted);
+}
+.primary {
+  border: 1px solid var(--green);
+  background: var(--green);
+  color: white;
+  font-weight: 750;
+}
+.primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.secondary {
+  background: transparent;
+  color: inherit;
+  border: 1px solid var(--line);
+  font-weight: 700;
+}
+.ticketList {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.ticket {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 14px;
+  min-width: 0;
+}
+.ticketTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ticket p {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 7px 0;
+}
+.ticket ul {
+  padding-left: 20px;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.ticket button {
+  width: 100%;
+}
+.statusQUEUED,
+.statusACCEPTED,
+.statusPREPARING,
+.statusREADY,
+.statusSERVED {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 5px 8px;
+  border-radius: 20px;
+  background: #eee7d8;
+  color: #67552f;
+}
+.statusACCEPTED {
+  background: #e5ede7;
+  color: #315743;
+}
+.statusPREPARING {
+  background: #e1ebf2;
+  color: #2f596d;
+}
+.statusREADY {
+  background: #dcece0;
+  color: #176139;
+}
+.statusSERVED {
+  background: #e7e9e7;
+  color: #46524a;
+}
+.count {
+  display: grid;
+  place-items: center;
+  background: #d8e3db;
+  color: #0f3d32;
+  border-radius: 50%;
+  min-width: 34px;
+  height: 34px;
+  font-weight: 800;
+}
+.empty {
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: center;
+}
+.notice {
+  min-height: 24px;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 17px 0;
+}
+.footerLinks {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+.footerLinks a {
+  color: #0f3d32;
+  font-size: 12px;
+  font-weight: 700;
+}
+.dark .footerLinks a {
+  color: #d8e3db;
+}
+@media (max-width: 760px) {
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+  .wrap {
+    padding: 22px 16px;
+  }
+  .header {
+    align-items: flex-start;
+  }
+  .brand span {
+    display: none;
+  }
+  .headerActions {
+    gap: 6px;
+  }
+  .headerActions .secondary {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .heading {
+    align-items: center;
+  }
+  .badge {
+    font-size: 8px;
+    padding: 6px;
+  }
+  .panel {
+    padding: 15px;
+  }
+}
+@media (max-width: 380px) {
+  .header {
+    padding: 10px;
+  }
+  .headerActions label {
+    font-size: 9px;
+  }
+  .headerActions select {
+    max-width: 92px;
+  }
+  .roles {
+    width: 100%;
+  }
+  .roles button {
+    padding: 0 11px;
+  }
+  .heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page * {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}
