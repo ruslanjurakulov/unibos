@@ -756,7 +756,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           void handleSecurityRoute(req, res, {
             security: {
               getIdentity: async () => ({
-                userId: actor,
+                userId: req.headers["x-test-user"]?.toString() ?? actor,
                 sessionId: "test",
                 mfaVerified: true,
               }),
@@ -776,6 +776,16 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
             method,
             headers: {
               Origin: testOrigin,
+              ...(body ? { "Content-Type": "application/json" } : {}),
+            },
+            ...(body ? { body: JSON.stringify(body) } : {}),
+          });
+        const callAs = (userId, route, method = "GET", body) =>
+          fetch(`${testOrigin}${route}`, {
+            method,
+            headers: {
+              Origin: testOrigin,
+              "x-test-user": userId,
               ...(body ? { "Content-Type": "application/json" } : {}),
             },
             ...(body ? { body: JSON.stringify(body) } : {}),
@@ -856,11 +866,11 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           accountantScope.organizations[0].branches[0].navigation.map(
             (item) => item.id,
           ),
-          ["workspace", "shifts"],
+          ["workspace", "shifts", "payments"],
         );
         assert.deepEqual(
           accountantScope.organizations[0].branches[0].capabilities,
-          ["orders.read", "shifts.read", "workspace.view"],
+          ["orders.read", "shifts.read", "transactions.read", "workspace.view"],
         );
         await grant("owner_a", "multi_scope_a", "director", null);
         await withTenantTransaction(app, "owner_b", orgB.id, (client) =>
@@ -1497,6 +1507,110 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           const pickupResult = await pickup.json();
           assert.equal(pickupResult.order.fulfillment_type, "PICKUP");
           assert.equal(pickupResult.order.table_id, null);
+          const paymentShift = await call(shiftPath, "POST", {
+            idempotencyKey: randomUUID(),
+            currencyCode: "UZS",
+            openingAmountMinor: "5000",
+          });
+          assert.equal(paymentShift.status, 201);
+          const cashierBShift = await callAs("cashier_b", shiftPath, "POST", {
+            idempotencyKey: randomUUID(),
+            currencyCode: "UZS",
+            openingAmountMinor: "5000",
+          });
+          assert.equal(cashierBShift.status, 201);
+          const cashPaymentPath = `/api/v1/organizations/${orgA.id}/branches/${branchA}/cash-payments/orders/${pickupResult.order.id}`;
+          const concurrentBodies = [
+            {
+              idempotencyKey: randomUUID(),
+              cashReceivedMinor: String(
+                BigInt(pickupResult.order.total_minor) + 500n,
+              ),
+            },
+            {
+              idempotencyKey: randomUUID(),
+              cashReceivedMinor: String(
+                BigInt(pickupResult.order.total_minor) + 500n,
+              ),
+            },
+          ];
+          const concurrentPayments = await Promise.all([
+            callAs("cashier_a", cashPaymentPath, "POST", concurrentBodies[0]),
+            callAs("cashier_b", cashPaymentPath, "POST", concurrentBodies[1]),
+          ]);
+          assert.deepEqual(
+            concurrentPayments.map((item) => item.status).sort(),
+            [201, 409],
+          );
+          const winnerIndex = concurrentPayments.findIndex(
+            (item) => item.status === 201,
+          );
+          const winnerUser = winnerIndex === 0 ? "cashier_a" : "cashier_b";
+          const winningBody = concurrentBodies[winnerIndex];
+          const recordedPayment = concurrentPayments[winnerIndex];
+          const recordedPaymentResult = await recordedPayment.json();
+          assert.equal(
+            recordedPaymentResult.payment.amount_minor,
+            pickupResult.order.total_minor,
+          );
+          assert.equal(recordedPaymentResult.payment.change_minor, "500");
+          assert.equal(
+            (await callAs(winnerUser, cashPaymentPath, "POST", winningBody))
+              .status,
+            200,
+          );
+          assert.equal(
+            (
+              await callAs(winnerUser, cashPaymentPath, "POST", {
+                ...winningBody,
+                cashReceivedMinor: "999999",
+              })
+            ).status,
+            409,
+          );
+          const paymentLedger = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query(
+                "SELECT account_code,direction,amount_minor::text FROM cash_payment_ledger_entries WHERE payment_id=$1 ORDER BY account_code",
+                [recordedPaymentResult.payment.id],
+              ),
+          );
+          assert.equal(paymentLedger.rows.length, 2);
+          assert.equal(
+            paymentLedger.rows[0].amount_minor,
+            paymentLedger.rows[1].amount_minor,
+          );
+          const paidOrder = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query("SELECT payment_status,paid_at FROM orders WHERE id=$1", [
+                pickupResult.order.id,
+              ]),
+          );
+          assert.equal(paidOrder.rows[0].payment_status, "PAID");
+          assert.ok(paidOrder.rows[0].paid_at);
+          actor = "staff_a";
+          assert.equal(
+            (
+              await call(`${waiterPath}/${pickupResult.order.id}`, "POST", {
+                idempotencyKey: randomUUID(),
+                items: [
+                  {
+                    productId: seed.product,
+                    quantity: "1",
+                    priceVersion: currentPrice,
+                  },
+                ],
+              })
+            ).status,
+            409,
+          );
+          actor = "cashier_a";
           await withTenantTransaction(app, "owner_a", orgA.id, (c) =>
             c.query(
               "INSERT INTO branch_product_availability(organization_id,branch_id,product_id,available) VALUES($1,$2,$3,false) ON CONFLICT(organization_id,branch_id,product_id) DO UPDATE SET available=false",

@@ -32,6 +32,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     waiter: "Ofitsiant",
     kitchen: "Oshxona",
     shifts: "Smenalar",
+    payments: "Naqd to‘lovlar",
   },
   ru: {
     owner: "Владелец",
@@ -42,6 +43,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     waiter: "Официант",
     kitchen: "Кухня",
     shifts: "Смены",
+    payments: "Наличные платежи",
   },
   en: {
     owner: "Owner",
@@ -52,6 +54,7 @@ const roleNames: Record<Language, Record<string, string>> = {
     waiter: "Waiter",
     kitchen: "Kitchen",
     shifts: "Cash shifts",
+    payments: "Cash payments",
   },
 };
 const copy: Record<Language, Record<string, string>> = {
@@ -64,6 +67,7 @@ const copy: Record<Language, Record<string, string>> = {
     waiter: "Ofitsiant",
     kitchen: "Oshxona",
     shifts: "Smenalar",
+    payments: "To‘lovlar",
     loading: "Vakolatlar tekshirilmoqda…",
     unavailable: "Ish joyi API orqali tasdiqlanmadi",
     menu: "Navigatsiya",
@@ -82,6 +86,7 @@ const copy: Record<Language, Record<string, string>> = {
     waiter: "Официант",
     kitchen: "Кухня",
     shifts: "Смены",
+    payments: "Платежи",
     loading: "Проверка прав доступа…",
     unavailable: "Рабочее пространство не подтверждено API",
     menu: "Навигация",
@@ -100,6 +105,7 @@ const copy: Record<Language, Record<string, string>> = {
     waiter: "Waiter",
     kitchen: "Kitchen",
     shifts: "Cash shifts",
+    payments: "Payments",
     loading: "Verifying access…",
     unavailable: "Workspace was not verified by the API",
     menu: "Navigation",
@@ -116,6 +122,7 @@ const linkKey: Record<string, string> = {
   waiter: "waiter",
   kitchen: "kitchen",
   shifts: "shifts",
+  payments: "payments",
 };
 
 export default function WorkspaceNavigation({

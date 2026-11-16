@@ -69,6 +69,7 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "kitchen.operate",
     "shifts.open",
     "shifts.close",
+    "transactions.read",
   ],
   director: [
     "workspace.view",
@@ -84,6 +85,7 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "kitchen.operate",
     "shifts.open",
     "shifts.close",
+    "transactions.read",
   ],
   administrator: [
     "workspace.view",
@@ -98,7 +100,12 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "shifts.open",
     "shifts.close",
   ],
-  accountant: ["workspace.view", "orders.read", "shifts.read"],
+  accountant: [
+    "workspace.view",
+    "orders.read",
+    "shifts.read",
+    "transactions.read",
+  ],
   cashier: [
     "workspace.view",
     "catalog.read",
@@ -108,6 +115,8 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
     "waiter.operate",
     "shifts.open",
     "shifts.close",
+    "payments.cash_record",
+    "transactions.read",
   ],
   waiter: ["workspace.view", "catalog.read", "tables.read", "waiter.operate"],
   kitchen: ["workspace.view", "kitchen.operate"],
@@ -906,6 +915,15 @@ export async function handleSecurityRoute(
                       },
                     ]
                   : []),
+                ...(capabilities.includes("payments.cash_record") ||
+                capabilities.includes("transactions.read")
+                  ? [
+                      {
+                        href: `/dashboard/payments?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "payments",
+                      },
+                    ]
+                  : []),
               ],
             };
           }),
@@ -949,6 +967,167 @@ export async function handleSecurityRoute(
       json(response, 201, { organization });
       return true;
     }
+  }
+  const cashPaymentOrderRoute =
+    /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/cash-payments(?:\/orders\/([^/]+))?$/.exec(
+      path,
+    );
+  if (cashPaymentOrderRoute) {
+    const orgId = validateUuid(cashPaymentOrderRoute[1] ?? "");
+    const branchId = validateUuid(cashPaymentOrderRoute[2] ?? "");
+    const orderId = cashPaymentOrderRoute[3]
+      ? validateUuid(cashPaymentOrderRoute[3])
+      : null;
+    const method = request.method ?? "GET";
+    if (!(method === "GET" && !orderId) && !(method === "POST" && orderId))
+      throw new ApiAccessError(404);
+    const body = method === "POST" ? await readJson(request) : undefined;
+    const result = await withTenantTransaction(
+      options.pool,
+      identity.userId,
+      orgId,
+      async (client) => {
+        const memberships = await actorMemberships(
+          client,
+          orgId,
+          identity.userId,
+        );
+        if (!canAccessBranch(memberships, branchId))
+          throw new ApiAccessError(403);
+        const isCashier = memberships.some(
+          (m) => m.branch_id === branchId && m.role === "cashier",
+        );
+        if (method === "GET") {
+          if (!canReadCashShifts(memberships, branchId))
+            throw new ApiAccessError(403);
+          const [shift, orders, payments] = await Promise.all([
+            isCashier
+              ? client.query(
+                  "SELECT id,status,currency_code,version FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND cashier_user_id=$3 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",
+                  [orgId, branchId, identity.userId],
+                )
+              : Promise.resolve({ rows: [] }),
+            isCashier
+              ? client.query(
+                  "SELECT o.id,o.status,o.currency_code,o.total_minor::text,o.created_at,o.table_id,COALESCE(jsonb_agg(jsonb_build_object('name',i.product_name_snapshot,'quantity',i.quantity,'lineTotalMinor',i.line_total_minor::text) ORDER BY i.created_at,i.id) FILTER (WHERE i.id IS NOT NULL),'[]'::jsonb) AS items FROM public.orders o LEFT JOIN public.order_items i ON i.organization_id=o.organization_id AND i.branch_id=o.branch_id AND i.order_id=o.id WHERE o.organization_id=$1 AND o.branch_id=$2 AND o.payment_status='UNPAID' AND o.status<>'CANCELLED' GROUP BY o.id ORDER BY o.created_at,o.id LIMIT 100",
+                  [orgId, branchId],
+                )
+              : Promise.resolve({ rows: [] }),
+            client.query(
+              "SELECT p.id,p.order_id,p.shift_id,p.cashier_user_id,p.currency_code,p.amount_minor::text,p.cash_received_minor::text,p.change_minor::text,p.created_at,o.status AS order_status FROM public.cash_payments p JOIN public.orders o ON o.organization_id=p.organization_id AND o.branch_id=p.branch_id AND o.id=p.order_id WHERE p.organization_id=$1 AND p.branch_id=$2 ORDER BY p.created_at DESC,p.id DESC LIMIT 100",
+              [orgId, branchId],
+            ),
+          ]);
+          return {
+            status: 200,
+            payload: {
+              mode: "INTEGRATED",
+              activeShift: shift.rows[0] ?? null,
+              unpaidOrders: orders.rows,
+              payments: payments.rows,
+            },
+          };
+        }
+        if (!isCashier) throw new ApiAccessError(403);
+        requireMfa(identity);
+        exactKeys(body!, ["idempotencyKey", "cashReceivedMinor"]);
+        const idempotencyKey = validateUuid(
+          stringField(body!, "idempotencyKey", 36),
+        );
+        const cashReceivedMinor = minorAmount(body!.cashReceivedMinor);
+        if (cashReceivedMinor === "0") throw new ApiAccessError(400);
+        const requestHash = createHash("sha256")
+          .update(
+            JSON.stringify({
+              operation: "RECORD_CASH_PAYMENT",
+              orderId,
+              cashReceivedMinor,
+            }),
+          )
+          .digest();
+        await client.query(
+          "SELECT pg_advisory_xact_lock(hashtextextended($1,0))",
+          [
+            `${orgId}:${branchId}:${identity.userId}:RECORD_CASH_PAYMENT:${idempotencyKey}`,
+          ],
+        );
+        const prior = await client.query(
+          "SELECT request_hash,payment_id FROM public.cash_payment_idempotency_keys WHERE organization_id=$1 AND branch_id=$2 AND actor_user_id=$3 AND operation='RECORD_CASH_PAYMENT' AND idempotency_key=$4",
+          [orgId, branchId, identity.userId, idempotencyKey],
+        );
+        if (prior.rows[0]) {
+          if (!Buffer.from(prior.rows[0].request_hash).equals(requestHash))
+            throw new ApiAccessError(409, "IDEMPOTENCY_KEY_REUSED");
+          const payment = await client.query(
+            "SELECT * FROM public.cash_payments WHERE organization_id=$1 AND branch_id=$2 AND id=$3",
+            [orgId, branchId, prior.rows[0].payment_id],
+          );
+          return {
+            status: 200,
+            payload: { payment: payment.rows[0], duplicate: true },
+          };
+        }
+        const order = await client.query(
+          "SELECT * FROM private.lock_cash_payment_order($1,$2,$3)",
+          [orgId, branchId, orderId],
+        );
+        const orderRow = order.rows[0];
+        if (!orderRow) throw new ApiAccessError(404);
+        if (
+          orderRow.status === "CANCELLED" ||
+          orderRow.payment_status !== "UNPAID"
+        )
+          throw new ApiAccessError(409, "ORDER_NOT_PAYABLE");
+        if (BigInt(cashReceivedMinor) < BigInt(orderRow.total_minor))
+          throw new ApiAccessError(400, "CASH_TENDER_INSUFFICIENT");
+        if (
+          BigInt(orderRow.total_minor) > 1_000_000_000_000n ||
+          BigInt(cashReceivedMinor) > 1_000_000_000_000n
+        )
+          throw new ApiAccessError(400, "PAYMENT_OUT_OF_RANGE");
+        const shift = await client.query(
+          "SELECT id,currency_code FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND cashier_user_id=$3 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1 FOR UPDATE",
+          [orgId, branchId, identity.userId],
+        );
+        if (!shift.rows[0])
+          throw new ApiAccessError(409, "OPEN_CASH_SHIFT_REQUIRED");
+        if (shift.rows[0].currency_code !== orderRow.currency_code)
+          throw new ApiAccessError(409, "CURRENCY_MISMATCH");
+        const changeMinor = (
+          BigInt(cashReceivedMinor) - BigInt(orderRow.total_minor)
+        ).toString();
+        const inserted = await client.query(
+          "INSERT INTO public.cash_payments(organization_id,branch_id,order_id,shift_id,cashier_user_id,currency_code,amount_minor,cash_received_minor,change_minor) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *",
+          [
+            orgId,
+            branchId,
+            orderId,
+            shift.rows[0].id,
+            identity.userId,
+            orderRow.currency_code,
+            orderRow.total_minor,
+            cashReceivedMinor,
+            changeMinor,
+          ],
+        );
+        const payment = inserted.rows[0];
+        await client.query(
+          "INSERT INTO public.cash_payment_idempotency_keys(organization_id,branch_id,actor_user_id,operation,idempotency_key,request_hash,payment_id) VALUES($1,$2,$3,'RECORD_CASH_PAYMENT',$4,$5,$6)",
+          [
+            orgId,
+            branchId,
+            identity.userId,
+            idempotencyKey,
+            requestHash,
+            payment.id,
+          ],
+        );
+        return { status: 201, payload: { payment, duplicate: false } };
+      },
+    );
+    response.setHeader("Cache-Control", "no-store, private");
+    json(response, result.status, result.payload);
+    return true;
   }
   const shiftRoute =
     /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/cash-shifts(?:\/([^/]+))?(?:\/(movements|begin-close|confirm-close))?$/.exec(
@@ -998,7 +1177,7 @@ export async function handleSecurityRoute(
             ? [orgId, branchId]
             : [orgId, branchId, identity.userId];
           const active = await client.query(
-            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0))::text AS expected_current_minor " +
+            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0)+COALESCE((SELECT sum(p.amount_minor) FROM public.cash_payments p WHERE p.organization_id=s.organization_id AND p.branch_id=s.branch_id AND p.shift_id=s.id),0))::text AS expected_current_minor " +
               "FROM public.cash_shifts s LEFT JOIN public.cash_drawer_movements m ON m.organization_id=s.organization_id AND m.branch_id=s.branch_id AND m.shift_id=s.id " +
               "WHERE s.organization_id=$1 AND s.branch_id=$2 AND s.status IN ('OPEN','CLOSING')" +
               ownFilter +
@@ -1006,7 +1185,7 @@ export async function handleSecurityRoute(
             params,
           );
           const history = await client.query(
-            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0))::text AS expected_current_minor " +
+            "SELECT s.*,(s.opening_amount_minor+COALESCE(sum(CASE m.movement_type WHEN 'CASH_IN' THEN m.amount_minor ELSE -m.amount_minor END),0)+COALESCE((SELECT sum(p.amount_minor) FROM public.cash_payments p WHERE p.organization_id=s.organization_id AND p.branch_id=s.branch_id AND p.shift_id=s.id),0))::text AS expected_current_minor " +
               "FROM public.cash_shifts s LEFT JOIN public.cash_drawer_movements m ON m.organization_id=s.organization_id AND m.branch_id=s.branch_id AND m.shift_id=s.id " +
               "WHERE s.organization_id=$1 AND s.branch_id=$2 AND s.status='CLOSED'" +
               ownFilter +
@@ -1165,7 +1344,7 @@ export async function handleSecurityRoute(
           if (isMovement) {
             if (current.status !== "OPEN") throw new ApiAccessError(409);
             const drawer = await client.query(
-              "SELECT ($4::bigint+COALESCE(sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END),0))::text AS expected_minor FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3",
+              "SELECT ($4::bigint+COALESCE((SELECT sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END) FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3),0)+COALESCE((SELECT sum(amount_minor) FROM public.cash_payments WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3),0))::text AS expected_minor",
               [orgId, branchId, shiftId, current.opening_amount_minor],
             );
             const change =
@@ -1200,7 +1379,7 @@ export async function handleSecurityRoute(
           } else if (isBeginClose) {
             if (current.status !== "OPEN") throw new ApiAccessError(409);
             const expected = await client.query(
-              "SELECT ($4::bigint+COALESCE(sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END),0))::text AS expected_minor FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3",
+              "SELECT ($4::bigint+COALESCE((SELECT sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END) FROM public.cash_drawer_movements WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3),0)+COALESCE((SELECT sum(amount_minor) FROM public.cash_payments WHERE organization_id=$1 AND branch_id=$2 AND shift_id=$3),0))::text AS expected_minor",
               [orgId, branchId, shiftId, current.opening_amount_minor],
             );
             const expectedMinor = expected.rows[0].expected_minor;
@@ -1464,12 +1643,26 @@ export async function handleSecurityRoute(
               },
             };
           }
+          const paymentState = await client.query(
+            "SELECT private.staff_order_payment_status($1,$2,$3) AS payment_status",
+            [orgId, branchId, ticketId],
+          );
+          if (paymentState.rows[0]?.payment_status === "PAID")
+            throw new ApiAccessError(409, "ORDER_ALREADY_PAID");
           const order = await client.query(
             "SELECT id,status,currency_code FROM private.lock_staff_order($1,$2,$3)",
             [orgId, branchId, ticketId],
           );
           const orderRow = order.rows[0];
-          if (!orderRow) throw new ApiAccessError(404);
+          if (!orderRow) {
+            const latestState = await client.query(
+              "SELECT private.staff_order_payment_status($1,$2,$3) AS payment_status",
+              [orgId, branchId, ticketId],
+            );
+            if (latestState.rows[0]?.payment_status === "PAID")
+              throw new ApiAccessError(409, "ORDER_ALREADY_PAID");
+            throw new ApiAccessError(404);
+          }
           if (
             !["SUBMITTED", "ACCEPTED", "PREPARING", "READY"].includes(
               orderRow.status,

@@ -9,7 +9,7 @@ const copy = {
     demoHub: {
       eyebrow: "MAHSULOT DEMOLARI",
       title: "UniBOS’ni o‘zingiz ko‘ring",
-      lead: "Haqiqiy hisob ochmasdan oltita demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
+      lead: "Haqiqiy hisob ochmasdan yettita demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
       cards: [
         {
           title: "Restoran boshqaruvi",
@@ -63,6 +63,15 @@ const copy = {
           note: "Rollar orasidagi demo holati shu sahifa ichida saqlanadi; qurilmalararo sinxronlash yo‘q.",
           href: "/demo/service",
           action: "Xizmat oqimini boshlash",
+        },
+        {
+          title: "Kassa va naqd to‘lovlar",
+          label: "Kassir",
+          description:
+            "Smenani oching, demo buyurtmani naqd bilan yoping va qaytimni ko‘ring.",
+          note: "Barcha ma’lumotlar sun’iy va faqat shu sahifada vaqtincha saqlanadi.",
+          href: "/demo/finance",
+          action: "Moliyaviy demoni ochish",
         },
       ],
     },
@@ -309,7 +318,7 @@ const copy = {
     demoHub: {
       eyebrow: "PRODUCT DEMOS",
       title: "Explore UniBOS for yourself",
-      lead: "Explore six demo paths without creating a real account. No order, payment or customer record is sent.",
+      lead: "Explore seven demo paths without creating a real account. No order, payment or customer record is sent.",
       cards: [
         {
           title: "Restaurant operations",
@@ -362,6 +371,15 @@ const copy = {
           note: "Demo state is shared within this page only; there is no cross-device sync.",
           href: "/demo/service",
           action: "Start service workflow",
+        },
+        {
+          title: "Cash and payments",
+          label: "Cashier",
+          description:
+            "Open a shift, settle a synthetic order in cash and review change.",
+          note: "All data is fictional and temporary in this page only.",
+          href: "/demo/finance",
+          action: "Open finance demo",
         },
       ],
     },
@@ -608,7 +626,7 @@ const copy = {
     demoHub: {
       eyebrow: "ДЕМОНСТРАЦИИ ПРОДУКТА",
       title: "Изучите UniBOS самостоятельно",
-      lead: "Откройте шесть демонстрационных сценариев без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
+      lead: "Откройте семь демонстрационных сценариев без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
       cards: [
         {
           title: "Работа ресторана",
@@ -660,6 +678,15 @@ const copy = {
           note: "Состояние демо общее только внутри этой страницы; синхронизации между устройствами нет.",
           href: "/demo/service",
           action: "Начать сценарий",
+        },
+        {
+          title: "Касса и наличные платежи",
+          label: "Кассир",
+          description:
+            "Откройте смену, закройте демо-заказ наличными и проверьте сдачу.",
+          note: "Все данные вымышлены и временно хранятся только на этой странице.",
+          href: "/demo/finance",
+          action: "Открыть демо финансов",
         },
       ],
     },
