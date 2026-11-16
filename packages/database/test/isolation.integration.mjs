@@ -143,10 +143,14 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
               "cash_shift_events",
               "cash_drawer_movements",
               "cash_shift_idempotency_keys",
+              "cash_payments",
+              "cash_payment_events",
+              "cash_payment_ledger_entries",
+              "cash_payment_idempotency_keys",
             ],
           ],
         );
-        assert.equal(tables.rows.length, 11);
+        assert.equal(tables.rows.length, 15);
         for (const row of tables.rows) {
           assert(row.relrowsecurity && row.relforcerowsecurity);
           assert.notEqual(row.owner, "unibos_app");
@@ -183,6 +187,9 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           "branches",
           "memberships",
           "audit_events",
+          "cash_payments",
+          "cash_payment_events",
+          "cash_payment_ledger_entries",
         ])
           assert.equal(
             (await app.query(`SELECT * FROM ${table}`)).rows.length,
@@ -1429,6 +1436,27 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
             },
           );
           assert.equal(served.status, 200);
+          const servedUnpaidOrder = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query("SELECT status,payment_status FROM orders WHERE id=$1", [
+                result.order.id,
+              ]),
+          );
+          assert.equal(servedUnpaidOrder.rows[0].status, "SUBMITTED");
+          assert.equal(servedUnpaidOrder.rows[0].payment_status, "UNPAID");
+          const servedTicket = await withTenantTransaction(
+            app,
+            "owner_a",
+            orgA.id,
+            (c) =>
+              c.query("SELECT status FROM kitchen_tickets WHERE id=$1", [
+                result.ticketId,
+              ]),
+          );
+          assert.equal(servedTicket.rows[0].status, "SERVED");
           const history = await withTenantTransaction(
             app,
             "owner_a",
@@ -1583,6 +1611,80 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
             paymentLedger.rows[0].amount_minor,
             paymentLedger.rows[1].amount_minor,
           );
+          const paymentsPath = `/api/v1/organizations/${orgA.id}/branches/${branchA}/cash-payments`;
+          const paidAtDate = new Date(recordedPaymentResult.payment.created_at)
+            .toISOString()
+            .slice(0, 10);
+          const filteredHistoryResponse = await callAs(
+            "accountant_a",
+            `${paymentsPath}?from=${paidAtDate}&to=${paidAtDate}&cashierId=${winnerUser}&shiftId=${recordedPaymentResult.payment.shift_id}&orderId=${pickupResult.order.id}&paymentStatus=RECORDED&page=1&pageSize=1`,
+          );
+          assert.equal(filteredHistoryResponse.status, 200);
+          const filteredHistory = await filteredHistoryResponse.json();
+          assert.equal(filteredHistory.pagination.total, 1);
+          assert.equal(filteredHistory.payments.length, 1);
+          assert.equal(filteredHistory.payments[0].payment_method, "CASH");
+          assert.equal(filteredHistory.payments[0].payment_status, "RECORDED");
+          assert.equal(filteredHistory.payments[0].items.length, 1);
+          assert.equal(filteredHistory.payments[0].audit_history.length, 1);
+          assert.equal(filteredHistory.payments[0].ledger_entries.length, 2);
+          assert.equal(
+            filteredHistory.reconciliation.duplicate_payment_orders,
+            0,
+          );
+          assert.equal(filteredHistory.reconciliation.incomplete_payments, 0);
+          const uzsReconciliation =
+            filteredHistory.reconciliation.by_currency.find(
+              (item) => item.currencyCode === "UZS",
+            );
+          assert.equal(
+            uzsReconciliation.paymentTotalMinor,
+            pickupResult.order.total_minor,
+          );
+          assert.equal(
+            uzsReconciliation.ledgerCashDebitMinor,
+            pickupResult.order.total_minor,
+          );
+          assert.equal(
+            uzsReconciliation.ledgerReceivableCreditMinor,
+            pickupResult.order.total_minor,
+          );
+          assert.equal(
+            filteredHistory.reconciliation.shifts.some(
+              (item) => item.ledger_matches,
+            ),
+            true,
+          );
+          assert.equal((await callAs("kitchen_a", paymentsPath)).status, 403);
+          assert.equal(
+            (
+              await callAs(
+                "cashier_a",
+                `/api/v1/organizations/${orgA.id}/branches/${branchA2}/cash-payments`,
+              )
+            ).status,
+            403,
+          );
+          assert.equal((await callAs("owner_b", paymentsPath)).status, 403);
+          assert.equal(
+            (await callAs("accountant_a", `${paymentsPath}?pageSize=101`))
+              .status,
+            400,
+          );
+          assert.equal(
+            (await callAs("accountant_a", `${paymentsPath}?from=2026-99-99`))
+              .status,
+            400,
+          );
+          assert.equal(
+            (
+              await callAs("accountant_a", cashPaymentPath, "POST", {
+                idempotencyKey: randomUUID(),
+                cashReceivedMinor: "1",
+              })
+            ).status,
+            403,
+          );
           const paidOrder = await withTenantTransaction(
             app,
             "owner_a",
@@ -1594,6 +1696,71 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           );
           assert.equal(paidOrder.rows[0].payment_status, "PAID");
           assert.ok(paidOrder.rows[0].paid_at);
+          const otherCashier =
+            winnerUser === "cashier_a" ? "cashier_b" : "cashier_a";
+          const otherShiftResponse =
+            otherCashier === "cashier_a" ? paymentShift : cashierBShift;
+          const otherShift = (await otherShiftResponse.clone().json()).shift;
+          assert.equal(otherShift.status, "OPEN");
+          const closing = await callAs(
+            otherCashier,
+            `${shiftPath}/${otherShift.id}/begin-close`,
+            "POST",
+            {
+              idempotencyKey: randomUUID(),
+              expectedVersion: otherShift.version,
+              countedCashMinor: "5000",
+            },
+          );
+          assert.equal(closing.status, 201);
+          const closingShift = (await closing.json()).shift;
+          assert.equal(closingShift.status, "CLOSING");
+          assert.equal(
+            (
+              await callAs(
+                otherCashier,
+                `${shiftPath}/${otherShift.id}/confirm-close`,
+                "POST",
+                {
+                  idempotencyKey: randomUUID(),
+                  expectedVersion: closingShift.version,
+                },
+              )
+            ).status,
+            201,
+          );
+          const postCloseOrderResponse = await callAs(
+            otherCashier,
+            path,
+            "POST",
+            {
+              idempotencyKey: randomUUID(),
+              fulfillmentType: "PICKUP",
+              items: [
+                {
+                  productId: seed.product,
+                  quantity: "1",
+                  priceVersion: currentPrice,
+                },
+              ],
+            },
+          );
+          assert.equal(postCloseOrderResponse.status, 201);
+          const postCloseOrder = (await postCloseOrderResponse.json()).order;
+          assert.equal(
+            (
+              await callAs(
+                otherCashier,
+                `${paymentsPath}/orders/${postCloseOrder.id}`,
+                "POST",
+                {
+                  idempotencyKey: randomUUID(),
+                  cashReceivedMinor: String(postCloseOrder.total_minor),
+                },
+              )
+            ).status,
+            409,
+          );
           actor = "staff_a";
           assert.equal(
             (

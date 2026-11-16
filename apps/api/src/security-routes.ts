@@ -725,7 +725,8 @@ export async function handleSecurityRoute(
   response: ServerResponse,
   options: ApiSecurityOptions,
 ): Promise<boolean> {
-  const path = new URL(request.url ?? "/", "http://127.0.0.1").pathname;
+  const requestUrl = new URL(request.url ?? "/", "http://127.0.0.1");
+  const path = requestUrl.pathname;
   if (!path.startsWith("/api/")) return false;
   const origin = request.headers.origin;
   const unsafe = !["GET", "HEAD", "OPTIONS"].includes(request.method ?? "GET");
@@ -1000,31 +1001,154 @@ export async function handleSecurityRoute(
         if (method === "GET") {
           if (!canReadCashShifts(memberships, branchId))
             throw new ApiAccessError(403);
-          const [shift, orders, payments] = await Promise.all([
-            isCashier
-              ? client.query(
-                  "SELECT id,status,currency_code,version FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND cashier_user_id=$3 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",
-                  [orgId, branchId, identity.userId],
-                )
-              : Promise.resolve({ rows: [] }),
-            isCashier
-              ? client.query(
-                  "SELECT o.id,o.status,o.currency_code,o.total_minor::text,o.created_at,o.table_id,COALESCE(jsonb_agg(jsonb_build_object('name',i.product_name_snapshot,'quantity',i.quantity,'lineTotalMinor',i.line_total_minor::text) ORDER BY i.created_at,i.id) FILTER (WHERE i.id IS NOT NULL),'[]'::jsonb) AS items FROM public.orders o LEFT JOIN public.order_items i ON i.organization_id=o.organization_id AND i.branch_id=o.branch_id AND i.order_id=o.id WHERE o.organization_id=$1 AND o.branch_id=$2 AND o.payment_status='UNPAID' AND o.status<>'CANCELLED' GROUP BY o.id ORDER BY o.created_at,o.id LIMIT 100",
-                  [orgId, branchId],
-                )
-              : Promise.resolve({ rows: [] }),
-            client.query(
-              "SELECT p.id,p.order_id,p.shift_id,p.cashier_user_id,p.currency_code,p.amount_minor::text,p.cash_received_minor::text,p.change_minor::text,p.created_at,o.status AS order_status FROM public.cash_payments p JOIN public.orders o ON o.organization_id=p.organization_id AND o.branch_id=p.branch_id AND o.id=p.order_id WHERE p.organization_id=$1 AND p.branch_id=$2 ORDER BY p.created_at DESC,p.id DESC LIMIT 100",
-              [orgId, branchId],
-            ),
-          ]);
+          const pageRaw = requestUrl.searchParams.get("page") ?? "1";
+          const pageSizeRaw = requestUrl.searchParams.get("pageSize") ?? "25";
+          if (!/^\d{1,6}$/.test(pageRaw) || !/^\d{1,3}$/.test(pageSizeRaw))
+            throw new ApiAccessError(400, "INVALID_PAGINATION");
+          const page = Number(pageRaw);
+          const pageSize = Number(pageSizeRaw);
+          if (
+            !Number.isSafeInteger(page) ||
+            page < 1 ||
+            page > 100000 ||
+            !Number.isSafeInteger(pageSize) ||
+            pageSize < 1 ||
+            pageSize > 100
+          )
+            throw new ApiAccessError(400, "INVALID_PAGINATION");
+          const from = requestUrl.searchParams.get("from");
+          const to = requestUrl.searchParams.get("to");
+          const cashierId = requestUrl.searchParams.get("cashierId");
+          const shiftId = requestUrl.searchParams.get("shiftId");
+          const filterOrderId = requestUrl.searchParams.get("orderId");
+          const paymentStatus = requestUrl.searchParams.get("paymentStatus");
+          for (const value of [from, to]) {
+            if (value === null) continue;
+            const parsed = /^\d{4}-\d{2}-\d{2}$/.test(value)
+              ? new Date(`${value}T00:00:00.000Z`)
+              : null;
+            if (
+              !parsed ||
+              Number.isNaN(parsed.getTime()) ||
+              parsed.toISOString().slice(0, 10) !== value
+            )
+              throw new ApiAccessError(400, "INVALID_DATE_FILTER");
+          }
+          if (
+            cashierId !== null &&
+            (cashierId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(cashierId))
+          )
+            throw new ApiAccessError(400, "INVALID_CASHIER_FILTER");
+          for (const value of [shiftId, filterOrderId])
+            if (value !== null) validateUuid(value);
+          if (paymentStatus !== null && paymentStatus !== "RECORDED")
+            throw new ApiAccessError(400, "INVALID_PAYMENT_STATUS_FILTER");
+          const filters: string[] = ["p.organization_id=$1", "p.branch_id=$2"];
+          const values: unknown[] = [orgId, branchId];
+          const addFilter = (column: string, value: unknown, cast = "") => {
+            values.push(value);
+            filters.push(`${column}=$${values.length}${cast}`);
+          };
+          if (from) {
+            values.push(from);
+            filters.push(`p.created_at>=($${values.length}::date)`);
+          }
+          if (to) {
+            values.push(to);
+            filters.push(
+              `p.created_at<($${values.length}::date + interval '1 day')`,
+            );
+          }
+          if (cashierId) addFilter("p.cashier_user_id", cashierId);
+          if (shiftId) addFilter("p.shift_id", shiftId);
+          if (filterOrderId) addFilter("p.order_id", filterOrderId);
+          if (paymentStatus) addFilter("p.status", paymentStatus);
+          if (from && to && from > to)
+            throw new ApiAccessError(400, "INVALID_DATE_RANGE");
+          const where = filters.join(" AND ");
+          values.push(pageSize, (page - 1) * pageSize);
+          const limitParam = values.length - 1;
+          const offsetParam = values.length;
+          const [shift, orders, payments, reconciliation, shiftReconciliation] =
+            await Promise.all([
+              isCashier
+                ? client.query(
+                    "SELECT id,status,currency_code,version FROM public.cash_shifts WHERE organization_id=$1 AND branch_id=$2 AND cashier_user_id=$3 AND status='OPEN' ORDER BY opened_at DESC LIMIT 1",
+                    [orgId, branchId, identity.userId],
+                  )
+                : Promise.resolve({ rows: [] }),
+              isCashier
+                ? client.query(
+                    "SELECT o.id,o.status,o.currency_code,o.total_minor::text,o.created_at,o.table_id,COALESCE(jsonb_agg(jsonb_build_object('name',i.product_name_snapshot,'quantity',i.quantity,'lineTotalMinor',i.line_total_minor::text) ORDER BY i.created_at,i.id) FILTER (WHERE i.id IS NOT NULL),'[]'::jsonb) AS items FROM public.orders o LEFT JOIN public.order_items i ON i.organization_id=o.organization_id AND i.branch_id=o.branch_id AND i.order_id=o.id WHERE o.organization_id=$1 AND o.branch_id=$2 AND o.payment_status='UNPAID' AND o.status<>'CANCELLED' GROUP BY o.id ORDER BY o.created_at,o.id LIMIT 100",
+                    [orgId, branchId],
+                  )
+                : Promise.resolve({ rows: [] }),
+              client.query(
+                `SELECT p.id,p.order_id,p.shift_id,p.cashier_user_id,p.payment_method,p.status AS payment_status,p.currency_code,p.amount_minor::text,p.cash_received_minor::text,p.change_minor::text,p.fiscal_status,p.created_at,o.status AS order_status,o.payment_status AS order_payment_status,o.fulfillment_type,o.total_minor::text AS order_total_minor,o.table_id,rt.display_name AS table_name,` +
+                  `(SELECT count(*)::int FROM public.cash_payments p2 WHERE p2.organization_id=p.organization_id AND p2.branch_id=p.branch_id AND p2.order_id=p.order_id) AS payment_count,` +
+                  `COALESCE((SELECT jsonb_agg(jsonb_build_object('name',i.product_name_snapshot,'quantity',i.quantity,'lineTotalMinor',i.line_total_minor::text) ORDER BY i.created_at,i.id) FROM public.order_items i WHERE i.organization_id=p.organization_id AND i.branch_id=p.branch_id AND i.order_id=p.order_id),'[]'::jsonb) AS items,` +
+                  `COALESCE((SELECT jsonb_agg(jsonb_build_object('eventType',e.event_type,'actorUserId',e.actor_user_id,'data',e.event_data,'createdAt',e.created_at) ORDER BY e.created_at,e.id) FROM public.cash_payment_events e WHERE e.organization_id=p.organization_id AND e.branch_id=p.branch_id AND e.payment_id=p.id),'[]'::jsonb) AS audit_history,` +
+                  `COALESCE((SELECT jsonb_agg(jsonb_build_object('account',l.account_code,'direction',l.direction,'amountMinor',l.amount_minor::text,'currencyCode',l.currency_code) ORDER BY l.account_code) FROM public.cash_payment_ledger_entries l WHERE l.organization_id=p.organization_id AND l.branch_id=p.branch_id AND l.payment_id=p.id),'[]'::jsonb) AS ledger_entries ` +
+                  `FROM public.cash_payments p JOIN public.orders o ON o.organization_id=p.organization_id AND o.branch_id=p.branch_id AND o.id=p.order_id LEFT JOIN public.restaurant_tables rt ON rt.organization_id=o.organization_id AND rt.branch_id=o.branch_id AND rt.id=o.table_id WHERE ${where} ORDER BY p.created_at DESC,p.id DESC LIMIT $${limitParam} OFFSET $${offsetParam}`,
+                values,
+              ),
+              client.query(
+                `WITH payment_check AS (` +
+                  `SELECT p.id,p.order_id,p.amount_minor,p.currency_code,o.payment_status,o.total_minor AS order_total_minor,o.currency_code AS order_currency_code,` +
+                  `(SELECT count(*) FROM public.cash_payment_ledger_entries l WHERE l.organization_id=p.organization_id AND l.branch_id=p.branch_id AND l.payment_id=p.id) AS ledger_count,` +
+                  `(SELECT COALESCE(sum(l.amount_minor),0) FROM public.cash_payment_ledger_entries l WHERE l.organization_id=p.organization_id AND l.branch_id=p.branch_id AND l.payment_id=p.id AND l.direction='DEBIT') AS debit_minor,` +
+                  `(SELECT COALESCE(sum(l.amount_minor),0) FROM public.cash_payment_ledger_entries l WHERE l.organization_id=p.organization_id AND l.branch_id=p.branch_id AND l.payment_id=p.id AND l.direction='CREDIT') AS credit_minor,` +
+                  `(SELECT count(*) FROM public.cash_payment_events e WHERE e.organization_id=p.organization_id AND e.branch_id=p.branch_id AND e.payment_id=p.id) AS event_count ` +
+                  `FROM public.cash_payments p JOIN public.orders o ON o.organization_id=p.organization_id AND o.branch_id=p.branch_id AND o.id=p.order_id WHERE p.organization_id=$1 AND p.branch_id=$2),` +
+                  `currency_totals AS (SELECT currency_code,count(*) AS payment_count,sum(amount_minor) AS payment_minor,sum(debit_minor) AS debit_minor,sum(credit_minor) AS credit_minor FROM payment_check GROUP BY currency_code),` +
+                  `order_check AS (SELECT order_id,count(*) AS payment_count FROM payment_check GROUP BY order_id) ` +
+                  `SELECT COALESCE((SELECT sum(payment_count) FROM currency_totals),0)::int AS total,` +
+                  `(SELECT count(*)::int FROM payment_check WHERE payment_status<>'PAID' OR amount_minor<>order_total_minor OR currency_code<>order_currency_code) AS unpaid_order_mismatches,` +
+                  `(SELECT count(*)::int FROM order_check WHERE payment_count>1) AS duplicate_payment_orders,` +
+                  `(SELECT count(*)::int FROM payment_check WHERE ledger_count<>2 OR debit_minor<>credit_minor OR event_count=0) AS incomplete_payments,` +
+                  `COALESCE((SELECT jsonb_agg(jsonb_build_object('currencyCode',currency_code,'paymentCount',payment_count,'paymentTotalMinor',payment_minor::text,'ledgerCashDebitMinor',debit_minor::text,'ledgerReceivableCreditMinor',credit_minor::text) ORDER BY currency_code) FROM currency_totals),'[]'::jsonb) AS by_currency`,
+                [orgId, branchId],
+              ),
+              client.query(
+                `SELECT s.id,s.cashier_user_id,s.currency_code,s.status,s.opened_at,s.closed_at,` +
+                  `s.opening_amount_minor::text,s.closing_expected_minor::text,s.counted_cash_minor::text,s.variance_minor::text,` +
+                  `(s.opening_amount_minor+COALESCE(m.movement_minor,0)+COALESCE(p.payment_minor,0))::text AS expected_cash_minor,` +
+                  `COALESCE(p.payment_minor,0)::text AS net_payment_minor,COALESCE(l.cash_debit_minor,0)::text AS ledger_cash_debit_minor,` +
+                  `(COALESCE(p.payment_minor,0)=COALESCE(l.cash_debit_minor,0)) AS ledger_matches ` +
+                  `FROM public.cash_shifts s ` +
+                  `LEFT JOIN LATERAL (SELECT sum(CASE movement_type WHEN 'CASH_IN' THEN amount_minor ELSE -amount_minor END) AS movement_minor FROM public.cash_drawer_movements m WHERE m.organization_id=s.organization_id AND m.branch_id=s.branch_id AND m.shift_id=s.id) m ON true ` +
+                  `LEFT JOIN LATERAL (SELECT sum(amount_minor) AS payment_minor FROM public.cash_payments p WHERE p.organization_id=s.organization_id AND p.branch_id=s.branch_id AND p.shift_id=s.id) p ON true ` +
+                  `LEFT JOIN LATERAL (SELECT sum(l.amount_minor) AS cash_debit_minor FROM public.cash_payment_ledger_entries l JOIN public.cash_payments cp ON cp.organization_id=l.organization_id AND cp.branch_id=l.branch_id AND cp.id=l.payment_id WHERE cp.organization_id=s.organization_id AND cp.branch_id=s.branch_id AND cp.shift_id=s.id AND l.account_code='CASH_DRAWER' AND l.direction='DEBIT') l ON true ` +
+                  `WHERE s.organization_id=$1 AND s.branch_id=$2 ORDER BY s.opened_at DESC,s.id DESC LIMIT 50`,
+                [orgId, branchId],
+              ),
+            ]);
+          const totals = await client.query(
+            "SELECT count(*)::int AS total FROM public.cash_payments p WHERE " +
+              where,
+            values.slice(0, values.length - 2),
+          );
+          const anomalies = await client.query(
+            "SELECT count(*)::int AS unmatched_paid_orders FROM public.orders o WHERE o.organization_id=$1 AND o.branch_id=$2 AND o.payment_status='PAID' AND NOT EXISTS (SELECT 1 FROM public.cash_payments p WHERE p.organization_id=o.organization_id AND p.branch_id=o.branch_id AND p.order_id=o.id)",
+            [orgId, branchId],
+          );
           return {
             status: 200,
             payload: {
               mode: "INTEGRATED",
+              canRecord: isCashier,
               activeShift: shift.rows[0] ?? null,
               unpaidOrders: orders.rows,
               payments: payments.rows,
+              pagination: { page, pageSize, total: totals.rows[0]?.total ?? 0 },
+              reconciliation: {
+                ...reconciliation.rows[0],
+                unmatchedPaidOrders:
+                  anomalies.rows[0]?.unmatched_paid_orders ?? 0,
+                unknownPayments: 0,
+                shifts: shiftReconciliation.rows,
+                note: "Unknown payment outcomes exist only in the client retry state; database payment writes are atomic.",
+              },
             },
           };
         }
