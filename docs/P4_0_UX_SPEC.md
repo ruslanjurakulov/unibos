@@ -1,7 +1,7 @@
 # P4.0 restaurant operations UX and domain specification
 
-Status: implementation contract for P4.1 onward.  
-Baseline: P3.3 `80257b46ebec29c9501473c2e8aac86ce0549838` (P3 PR #4 is still unmerged).  
+Status: implementation contract for P4.1 onward.
+Baseline: P3.3 `80257b46ebec29c9501473c2e8aac86ce0549838` (P3 PR #4 is still unmerged).
 Preview contract: all public role demos use synthetic data and visibly say `DEMO`; no Preview action creates a real order or payment.
 
 ## Role and permission matrix

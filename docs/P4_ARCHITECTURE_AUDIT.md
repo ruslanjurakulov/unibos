@@ -1,8 +1,8 @@
 # P4 repository audit
 
-Audit date: 2026-11-16  
-Audit branch: `feat/p4-restaurant-operations`  
-Dependency baseline: P3.3 commit `80257b46ebec29c9501473c2e8aac86ce0549838` on `feat/p3-website-preview`  
+Audit date: 2026-11-16
+Audit branch: `feat/p4-restaurant-operations`
+Dependency baseline: P3.3 commit `80257b46ebec29c9501473c2e8aac86ce0549838` on `feat/p3-website-preview`
 PR #4 remains a separate, unmerged dependency.
 
 ## Implementation inventory
