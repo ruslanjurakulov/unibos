@@ -9,7 +9,7 @@ const copy = {
     demoHub: {
       eyebrow: "MAHSULOT DEMOLARI",
       title: "UniBOS’ni o‘zingiz ko‘ring",
-      lead: "Haqiqiy hisob ochmasdan uchta demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
+      lead: "Haqiqiy hisob ochmasdan oltita demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
       cards: [
         {
           title: "Restoran boshqaruvi",
@@ -45,6 +45,24 @@ const copy = {
           note: "Faqat brauzer ichidagi synthetic demo; backendga ulanmagan.",
           href: "/demo/operations",
           action: "Katalog demosini ochish",
+        },
+        {
+          title: "Kassir POS",
+          label: "Kassir",
+          description:
+            "Dine-in yoki olib ketish buyurtmasini tuzing va savatni ko‘ring.",
+          note: "Buyurtma faqat shu brauzerdagi sun’iy demo holatida qoladi.",
+          href: "/demo/pos",
+          action: "Kassir demosini ochish",
+        },
+        {
+          title: "Xizmat oqimi",
+          label: "Kassir · Oshxona · Ofitsiant",
+          description:
+            "Bitta sahifada buyurtmani qabul qilish, tayyorlash va xizmat ko‘rsatishni sinang.",
+          note: "Rollar orasidagi demo holati shu sahifa ichida saqlanadi; qurilmalararo sinxronlash yo‘q.",
+          href: "/demo/service",
+          action: "Xizmat oqimini boshlash",
         },
       ],
     },
@@ -291,7 +309,7 @@ const copy = {
     demoHub: {
       eyebrow: "PRODUCT DEMOS",
       title: "Explore UniBOS for yourself",
-      lead: "Explore three demo paths without creating a real account. No order, payment or customer record is sent.",
+      lead: "Explore six demo paths without creating a real account. No order, payment or customer record is sent.",
       cards: [
         {
           title: "Restaurant operations",
@@ -327,6 +345,23 @@ const copy = {
           note: "Synthetic browser demo only; no backend connection.",
           href: "/demo/operations",
           action: "Open catalog demo",
+        },
+        {
+          title: "Cashier POS",
+          label: "Cashier",
+          description:
+            "Create a dine-in or takeaway order and review its cart.",
+          note: "The order stays in synthetic demo state in this browser only.",
+          href: "/demo/pos",
+          action: "Open cashier demo",
+        },
+        {
+          title: "Service workflow",
+          label: "Cashier · Kitchen · Waiter",
+          description: "Try order intake, preparation and service on one page.",
+          note: "Demo state is shared within this page only; there is no cross-device sync.",
+          href: "/demo/service",
+          action: "Start service workflow",
         },
       ],
     },
@@ -573,7 +608,7 @@ const copy = {
     demoHub: {
       eyebrow: "ДЕМОНСТРАЦИИ ПРОДУКТА",
       title: "Изучите UniBOS самостоятельно",
-      lead: "Откройте три демонстрационных сценария без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
+      lead: "Откройте шесть демонстрационных сценариев без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
       cards: [
         {
           title: "Работа ресторана",
@@ -608,6 +643,23 @@ const copy = {
           note: "Локальное демонстрационное состояние; без подключения к backend.",
           href: "/demo/operations",
           action: "Открыть демо каталога",
+        },
+        {
+          title: "Кассовый POS",
+          label: "Кассир",
+          description: "Создайте заказ в зале или навынос и проверьте корзину.",
+          note: "Заказ останется синтетическими данными только в этом браузере.",
+          href: "/demo/pos",
+          action: "Открыть демо кассы",
+        },
+        {
+          title: "Рабочий процесс ресторана",
+          label: "Кассир · Кухня · Официант",
+          description:
+            "На одной странице попробуйте прием заказа, приготовление и обслуживание.",
+          note: "Состояние демо общее только внутри этой страницы; синхронизации между устройствами нет.",
+          href: "/demo/service",
+          action: "Начать сценарий",
         },
       ],
     },

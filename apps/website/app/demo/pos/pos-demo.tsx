@@ -219,6 +219,9 @@ export default function PosDemo() {
             <small>Filial xodimi · Demo</small>
           </span>
         </div>
+        <a className={styles.hubLink} href="/demo">
+          Barcha demolar
+        </a>
       </header>
       <div className={styles.demoBanner}>
         <strong>DEMO</strong>

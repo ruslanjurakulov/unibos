@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   P3ExtendedPage,
   P3HomeAdditions,
@@ -426,6 +426,8 @@ export function DesignPage({ page }: { page: Page }) {
   const [locale, setLocale] = useState<Locale>("uz");
   const [dark, setDark] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const mobileNavRef = useRef<HTMLElement>(null);
   const t = labels[locale];
 
   useEffect(() => {
@@ -444,6 +446,18 @@ export function DesignPage({ page }: { page: Page }) {
       /* defaults are usable when storage is unavailable */
     }
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    mobileNavRef.current?.querySelector<HTMLElement>("a")?.focus();
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      setMenuOpen(false);
+      menuToggleRef.current?.focus();
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [menuOpen]);
 
   function updateLocale(value: Locale) {
     setLocale(value);
@@ -497,13 +511,48 @@ export function DesignPage({ page }: { page: Page }) {
                   : "Main navigation"
             }
           >
-            <Link href="/#platform">{t.platform}</Link>
-            <Link href="/solutions">{t.nav[1]}</Link>
-            <Link href="/pricing">{t.nav[2]}</Link>
-            <Link href="/demo">{t.nav[3]}</Link>
-            <Link href="/about">{t.nav[4]}</Link>
-            <Link href="/security">{t.security}</Link>
-            <Link href="/contact">{t.contactNav}</Link>
+            <Link
+              href="/#platform"
+              aria-current={page === "home" ? "page" : undefined}
+            >
+              {t.platform}
+            </Link>
+            <Link
+              href="/solutions"
+              aria-current={page === "solutions" ? "page" : undefined}
+            >
+              {t.nav[1]}
+            </Link>
+            <Link
+              href="/pricing"
+              aria-current={page === "pricing" ? "page" : undefined}
+            >
+              {t.nav[2]}
+            </Link>
+            <Link
+              href="/demo"
+              aria-current={page === "demoHub" ? "page" : undefined}
+            >
+              {t.nav[3]}
+            </Link>
+            <Link
+              href="/about"
+              aria-current={page === "about" ? "page" : undefined}
+            >
+              {t.nav[4]}
+            </Link>
+            <Link
+              href="/security"
+              aria-current={page === "security" ? "page" : undefined}
+            >
+              {t.security}
+            </Link>
+            <Link
+              href="/contact"
+              aria-current={page === "contact" ? "page" : undefined}
+            >
+              {t.contactNav}
+            </Link>
           </nav>
           <div className="p3-tools">
             <label className="sr-only" htmlFor="p3-locale">
@@ -542,10 +591,23 @@ export function DesignPage({ page }: { page: Page }) {
             </Link>
             <button
               className="p3-menu-toggle"
+              ref={menuToggleRef}
               type="button"
               aria-expanded={menuOpen}
               aria-controls="p3-main-nav"
-              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+              aria-label={
+                locale === "uz"
+                  ? menuOpen
+                    ? "Navigatsiyani yopish"
+                    : "Navigatsiyani ochish"
+                  : locale === "ru"
+                    ? menuOpen
+                      ? "Закрыть навигацию"
+                      : "Открыть навигацию"
+                    : menuOpen
+                      ? "Close navigation"
+                      : "Open navigation"
+              }
               onClick={() => setMenuOpen((value) => !value)}
             >
               {menuOpen ? "×" : "☰"}
@@ -556,6 +618,7 @@ export function DesignPage({ page }: { page: Page }) {
       {page !== "dashboard" && page !== "admin" && (
         <nav
           id="p3-main-nav"
+          ref={mobileNavRef}
           className={`p3-mobile-nav${menuOpen ? " is-open" : ""}`}
           aria-label={
             locale === "uz"
@@ -565,25 +628,53 @@ export function DesignPage({ page }: { page: Page }) {
                 : "Mobile navigation"
           }
         >
-          <Link href="/#platform" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/#platform"
+            aria-current={page === "home" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.platform}
           </Link>
-          <Link href="/solutions" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/solutions"
+            aria-current={page === "solutions" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.nav[1]}
           </Link>
-          <Link href="/pricing" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/pricing"
+            aria-current={page === "pricing" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.nav[2]}
           </Link>
-          <Link href="/demo" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/demo"
+            aria-current={page === "demoHub" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.nav[3]}
           </Link>
-          <Link href="/about" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/about"
+            aria-current={page === "about" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.nav[4]}
           </Link>
-          <Link href="/contact" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/contact"
+            aria-current={page === "contact" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.contactNav}
           </Link>
-          <Link href="/security" onClick={() => setMenuOpen(false)}>
+          <Link
+            href="/security"
+            aria-current={page === "security" ? "page" : undefined}
+            onClick={() => setMenuOpen(false)}
+          >
             {t.security}
           </Link>
           <Link href="/investors" onClick={() => setMenuOpen(false)}>

@@ -39,6 +39,20 @@
   letter-spacing: 0.15em;
   margin-top: 3px;
 }
+.hubLink {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 13px;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.hubLink:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 3px;
+}
 .context,
 .user {
   display: flex;
@@ -650,6 +664,10 @@
   .header {
     height: 60px;
     padding: 0 15px;
+  }
+  .hubLink {
+    padding: 7px 9px;
+    font-size: 9px;
   }
   .brand img {
     width: 30px;

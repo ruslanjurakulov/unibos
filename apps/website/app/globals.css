@@ -2544,6 +2544,12 @@ button:focus-visible {
 .p3-login:hover {
   color: var(--p3-gold);
 }
+.p3-nav a[aria-current="page"] {
+  color: var(--p3-gold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 6px;
+}
 .p3-tools {
   flex: 0 0 auto;
   display: flex;
@@ -3938,6 +3944,10 @@ button:focus-visible {
     border-bottom: 1px solid #ffffff24;
     font-size: 12px;
   }
+  .p3-mobile-nav a[aria-current="page"] {
+    color: var(--p3-gold);
+    font-weight: 700;
+  }
   .p3-tools {
     gap: 9px;
   }
@@ -4019,6 +4029,10 @@ button:focus-visible {
     padding: 12px 6px;
     border-bottom: 1px solid #ffffff24;
     font-size: 12px;
+  }
+  .p3-mobile-nav a[aria-current="page"] {
+    color: var(--p3-gold);
+    font-weight: 700;
   }
   .p3-home-hero {
     min-height: unset;

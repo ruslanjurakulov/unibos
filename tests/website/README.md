@@ -19,3 +19,13 @@ UNIBOS_TEST_BASE_URL=http://127.0.0.1:3132 node tests/website/p43-service.cjs
 ```
 
 This browser test exercises the same-page synthetic cashier → kitchen → waiter flow, reduced motion, UZ/RU/EN, dark theme and horizontal overflow at 320, 390, 768, 1024, 1366, 1440 and 1920 pixels. It does not test the authenticated API or cross-device synchronization. Screenshots go to `/workspace/work/p4.3-qa`.
+
+## P4.3.1 navigation and demo discovery
+
+With the local website running on loopback and Playwright/system Chromium available, run:
+
+```sh
+UNIBOS_TEST_BASE_URL=http://127.0.0.1:3130 node tests/website/p431-navigation.cjs
+```
+
+This checks the six Demo Hub destinations, UZ/RU/EN content, cashier and guest return paths, browser back/forward, same-page service role selection, 22 implemented page routes plus their internal links, localized mobile menu focus/Escape behavior, and horizontal overflow at 320–1920px. It does not authenticate against the API or prove role authorization; those remain server-side checks.
