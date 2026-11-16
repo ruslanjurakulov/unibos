@@ -631,6 +631,14 @@
 .pendingOrder strong {
   color: #4d432c;
 }
+.summary > .pendingOrder {
+  display: grid;
+  justify-content: stretch;
+}
+.pendingOrder span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
 .summary > p {
   text-align: center;
   margin: 7px 0 0;
