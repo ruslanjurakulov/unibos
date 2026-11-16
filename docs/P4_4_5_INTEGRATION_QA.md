@@ -73,8 +73,8 @@ One initial review finding was corrected: archived products now disable price ed
 - The persistent local PostgreSQL volume still contains the incompatible `unibos-business-003` lineage and remains untouched. It is not repaired.
 - The page has no dedicated table/QR management screen and no image upload; the UI says so explicitly.
 - Vercel Preview has no API/PostgreSQL integration and remains frontend-only. No real customer data is used.
-- Remote HEAD: `0225c4474cf962341059c8420b6501b402720063`. PR #6 remains open and unmerged.
-- GitHub Engineering workflow run 32: **PASS** on this SHA. Brand Audit run 36: **PASS**. Vercel Preview check: **success** on the same SHA.
+- Implementation commit: `3ea6f58`; first QA and release-audit documentation sync: `0225c4474cf962341059c8420b6501b402720063`; final remote-results documentation sync: `076c055c389ffd39b28f00ce08b23e8819abf685`. PR #6 remains open and unmerged.
+- GitHub Engineering workflow run 32: **PASS** on the implementation/documentation commit. Brand Audit run 36: **PASS**. Engineering workflow run 33, Brand Audit run 37, and the Vercel Preview check: **PASS** on the follow-up documentation commit.
 - Vercel Preview: `https://unibos-git-feat-p4-restaurant-operations-ruslanjurakulov9-1482.vercel.app/`. Vercel inspector reference: `7gSi1BxvBf6JzZEh9hE5NnLc5Ypp`. Target is the P4 branch Preview, not Production.
 - The live Preview `/dashboard/menu` returned HTTP 200. Chromium found the explicit “protected API is not connected” state, no page errors, and no horizontal overflow at 320, 390, 768, and 1440 px. Screenshot: `/workspace/work/p4.4.5-qa/vercel-preview-menu.png`.
 - The Preview has no backend/API credentials; this was not presented as a database-integrated remote session. A first browser attempt waiting for `networkidle` timed out while the page retained network activity; the check was rerun with `DOMContentLoaded`, explicit UI-state wait, and succeeded.

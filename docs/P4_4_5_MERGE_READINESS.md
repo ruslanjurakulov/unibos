@@ -30,8 +30,8 @@ Do not merge PR #4 or #6 until the owner resolves the visibility mismatch and ap
 
 ## Delivery completed
 
-- P4.4.5 commits were pushed to the existing `feat/p4-restaurant-operations` branch. Final SHA: `0225c4474cf962341059c8420b6501b402720063`.
+- P4.4.5 implementation commit `3ea6f58` and two audit/result documentation commits (`0225c4474cf962341059c8420b6501b402720063`, `076c055c389ffd39b28f00ce08b23e8819abf685`) were pushed to the existing `feat/p4-restaurant-operations` branch.
 - PR #6 was updated with the P4.4.5 implementation, verification, migration, and release notes. It remains open and unmerged.
-- Engineering CI run 32 and Brand Audit run 36 passed on the exact SHA. Vercel Preview check also passed.
+- Engineering CI run 32 / Brand Audit run 36 passed on the implementation result commit. Engineering CI run 33 / Brand Audit run 37 / Vercel Preview check passed on the latest recorded follow-up SHA `076c055c389ffd39b28f00ce08b23e8819abf685`.
 - Preview URL, Vercel inspector reference, live route status, backend-unavailable behavior, and screenshot evidence are recorded in `P4_4_5_INTEGRATION_QA.md`.
 - No Preview was promoted and no production deployment was created.
