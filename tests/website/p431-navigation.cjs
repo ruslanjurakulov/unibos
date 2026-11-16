@@ -32,6 +32,7 @@ const paths = [
   "/demo/operations",
   "/demo/pos",
   "/demo/service",
+  "/demo/finance",
   "/demo/guest",
 ];
 
@@ -57,6 +58,7 @@ async function main() {
       "/demo/operations",
       "/demo/pos",
       "/demo/service",
+      "/demo/finance",
     ]) {
       const link = page.locator(`a[href="${route}"]`).first();
       await link.waitFor();
@@ -68,8 +70,8 @@ async function main() {
     }
     assert.equal(
       await page.locator(".p3-content-demoHub article").count(),
-      6,
-      "Demo Hub lists six implemented demo paths",
+      7,
+      "Demo Hub lists all seven implemented demo paths",
     );
     assert.equal(
       await page
@@ -84,7 +86,7 @@ async function main() {
       await page.waitForTimeout(50);
       assert.equal(
         await page.locator(".p3-content-demoHub article").count(),
-        6,
+        7,
         `${locale} keeps all demo paths`,
       );
     }
@@ -218,7 +220,7 @@ async function main() {
 
     assert.deepEqual(errors, [], "No uncaught browser runtime errors");
     console.log(
-      `PASS: six demo entries, UZ/RU/EN hub and mobile menu, POS and guest return paths, service role selection, ${paths.length} routes return HTTP 200, seven viewport widths have no overflow`,
+      `PASS: seven demo entries, UZ/RU/EN hub and mobile menu, POS and guest return paths, service role selection, ${paths.length} routes return HTTP 200, seven viewport widths have no overflow`,
     );
   } finally {
     await browser.close();

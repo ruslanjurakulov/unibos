@@ -293,11 +293,15 @@ async function pageMatrix(browser) {
         );
       }
       if (name === "demo-hub") {
+        const cards = page.locator(".p3-content-demoHub article");
+        const revealedCards = page.locator(
+          ".p3-content-demoHub article[data-motion-reveal]",
+        );
+        assert.ok((await cards.count()) >= 3);
         assert.equal(
-          await page
-            .locator(".p3-content-demoHub [data-motion-reveal]")
-            .count(),
-          3,
+          await revealedCards.count(),
+          await cards.count(),
+          "Every available Demo Hub card participates in the reveal",
         );
       }
       if (name === "solutions") {

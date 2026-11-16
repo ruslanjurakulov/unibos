@@ -561,7 +561,7 @@ export default function CashPayments() {
             {t.unavailable}
           </p>
         )}
-        {error && (
+        {error && !pending && (
           <p className={styles.alert} role="alert">
             {error}
           </p>

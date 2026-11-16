@@ -436,11 +436,12 @@ async function main() {
       await cashierPage
         .getByRole("button", { name: "Naqd to‘lovni qayd etish" })
         .click();
-      await cashierPage
-        .getByText(
-          "Server javobi noma’lum. Xuddi shu amal kaliti bilan xavfsiz qayta urinishingiz mumkin.",
-        )
-        .waitFor();
+      const unknownOutcome = cashierPage.getByText(
+        "Server javobi noma’lum. Xuddi shu amal kaliti bilan xavfsiz qayta urinishingiz mumkin.",
+        { exact: true },
+      );
+      await unknownOutcome.waitFor();
+      assert.equal(await unknownOutcome.count(), 1);
       assert.notEqual(
         await cashierPage.evaluate(() =>
           sessionStorage.getItem("unibos.cash-payment.pending"),
