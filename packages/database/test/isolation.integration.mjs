@@ -50,7 +50,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     // Synthetic prerequisite identity table exists only inside this owned disposable test DB.
     await fixture.query("CREATE TABLE public.auth_users (id text PRIMARY KEY)");
     await fixture.query(
-      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('outsider')",
+      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('cashier_a'),('kitchen_a'),('outsider')",
     );
     await migrateBusiness(fixture);
     await migrateBusiness(fixture); // An unchanged migration must be idempotent.
@@ -102,6 +102,8 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     );
     await grant("owner_a", "administrator_a", "administrator", branchA);
     await grant("owner_a", "director_a", "director", null);
+    await grant("owner_a", "cashier_a", "cashier", branchA);
+    await grant("owner_a", "kitchen_a", "kitchen", branchA);
 
     await t.test(
       "runtime roles are non-owner/non-bypass and all tenant tables FORCE RLS",
@@ -244,6 +246,246 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
               0,
             );
           },
+        );
+      },
+    );
+
+    await t.test(
+      "catalog roles, immutable price history and branch availability are isolated",
+      async () => {
+        const category = await withTenantTransaction(
+          app,
+          "owner_a",
+          orgA.id,
+          async (c) =>
+            (
+              await c.query(
+                "INSERT INTO product_categories(organization_id,name) VALUES($1,'Food') RETURNING id",
+                [orgA.id],
+              )
+            ).rows[0].id,
+        );
+        const product = await withTenantTransaction(
+          app,
+          "owner_a",
+          orgA.id,
+          async (c) =>
+            (
+              await c.query(
+                "INSERT INTO products(organization_id,category_id,name) VALUES($1,$2,'Soup') RETURNING id",
+                [orgA.id, category],
+              )
+            ).rows[0].id,
+        );
+        const setPrice = (actor, branchId, amount = 125000, currency = "UZS") =>
+          withTenantTransaction(app, actor, orgA.id, (c) =>
+            c.query(
+              "INSERT INTO product_price_versions(organization_id,branch_id,product_id,price_minor,currency_code) VALUES($1,$2,$3,$4,$5)",
+              [orgA.id, branchId, product, amount, currency],
+            ),
+          );
+        await setPrice("owner_a", branchA);
+        await setPrice("owner_a", branchA, 130000);
+        await setPrice("director_a", branchA, 140000);
+        await assert.rejects(setPrice("owner_a", branchA, -1), {
+          code: "23514",
+        });
+        await assert.rejects(setPrice("owner_a", branchA, 1, "US"), {
+          code: "23514",
+        });
+        await assert.rejects(setPrice("administrator_a", branchA), {
+          code: "42501",
+        });
+        await withTenantTransaction(app, "owner_b", orgB.id, async (c) => {
+          assert.equal(
+            (await c.query("SELECT * FROM product_categories")).rows.length,
+            0,
+          );
+          assert.equal(
+            (await c.query("SELECT * FROM products")).rows.length,
+            0,
+          );
+        });
+        await withTenantTransaction(app, "owner_a", orgA.id, async (c) => {
+          const rows = await c.query(
+            "SELECT price_minor,currency_code FROM product_price_versions WHERE product_id=$1 ORDER BY effective_at,id",
+            [product],
+          );
+          assert.deepEqual(
+            rows.rows.map((r) => Number(r.price_minor)),
+            [125000, 130000, 140000],
+          );
+          await c.query(
+            "INSERT INTO branch_product_availability(organization_id,branch_id,product_id,available) VALUES($1,$2,$3,false)",
+            [orgA.id, branchA, product],
+          );
+        });
+        await withTenantTransaction(
+          app,
+          "administrator_a",
+          orgA.id,
+          async (c) => {
+            assert.equal(
+              (
+                await c.query(
+                  "UPDATE branch_product_availability SET available=true WHERE product_id=$1",
+                  [product],
+                )
+              ).rowCount,
+              1,
+            );
+            assert.equal(
+              (
+                await c.query(
+                  "UPDATE products SET name='Forbidden' WHERE id=$1",
+                  [product],
+                )
+              ).rowCount,
+              0,
+            );
+            assert.equal(
+              (
+                await c.query(
+                  "SELECT * FROM product_price_versions WHERE branch_id=$1",
+                  [branchA2],
+                )
+              ).rows.length,
+              0,
+            );
+          },
+        );
+        for (const actor of ["staff_a", "cashier_a", "kitchen_a"]) {
+          await assert.rejects(
+            withTenantTransaction(app, actor, orgA.id, (c) =>
+              c.query(
+                "INSERT INTO branch_product_availability(organization_id,branch_id,product_id,available) VALUES($1,$2,$3,false)",
+                [orgA.id, branchA, product],
+              ),
+            ),
+            { code: "42501" },
+          );
+        }
+      },
+    );
+
+    await t.test(
+      "tables and QR tokens bind to one branch, keep only hashes and revoke once",
+      async () => {
+        const tableId = await withTenantTransaction(
+          app,
+          "administrator_a",
+          orgA.id,
+          async (c) =>
+            (
+              await c.query(
+                "INSERT INTO restaurant_tables(organization_id,branch_id,table_code,display_name,seats) VALUES($1,$2,'T1','Table 1',4) RETURNING id",
+                [orgA.id, branchA],
+              )
+            ).rows[0].id,
+        );
+        const tokenHash = Buffer.alloc(32, 3);
+        const token = await withTenantTransaction(
+          app,
+          "administrator_a",
+          orgA.id,
+          async (c) =>
+            (
+              await c.query(
+                "INSERT INTO table_qr_tokens(organization_id,branch_id,table_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '1 day') RETURNING id,table_id,expires_at",
+                [orgA.id, branchA, tableId, tokenHash],
+              )
+            ).rows[0],
+        );
+        assert.equal(token.table_id, tableId);
+        await assert.rejects(
+          withTenantTransaction(app, "administrator_a", orgA.id, (c) =>
+            c.query("SELECT token_hash FROM table_qr_tokens WHERE id=$1", [
+              token.id,
+            ]),
+          ),
+          { code: "42501" },
+        );
+        await withTenantTransaction(app, "owner_b", orgB.id, async (c) => {
+          assert.equal(
+            (await c.query("SELECT id FROM table_qr_tokens")).rows.length,
+            0,
+          );
+          assert.equal(
+            (await c.query("SELECT * FROM restaurant_tables")).rows.length,
+            0,
+          );
+        });
+        await assert.rejects(
+          withTenantTransaction(app, "administrator_a", orgA.id, (c) =>
+            c.query(
+              "INSERT INTO table_qr_tokens(organization_id,branch_id,table_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '1 day')",
+              [orgA.id, branchA2, tableId, Buffer.alloc(32, 4)],
+            ),
+          ),
+          { code: "42501" },
+        );
+        let renewedId;
+        await withTenantTransaction(
+          app,
+          "administrator_a",
+          orgA.id,
+          async (c) => {
+            await c.query(
+              "SELECT id FROM restaurant_tables WHERE organization_id=$1 AND branch_id=$2 AND id=$3 AND active FOR UPDATE",
+              [orgA.id, branchA, tableId],
+            );
+            await c.query(
+              "UPDATE table_qr_tokens SET revoked_at=now() WHERE organization_id=$1 AND branch_id=$2 AND table_id=$3 AND revoked_at IS NULL AND expires_at>now()",
+              [orgA.id, branchA, tableId],
+            );
+            const renewed = await c.query(
+              "INSERT INTO table_qr_tokens(organization_id,branch_id,table_id,token_hash,expires_at) VALUES($1,$2,$3,$4,now()+interval '1 day') RETURNING id",
+              [orgA.id, branchA, tableId, Buffer.alloc(32, 5)],
+            );
+            renewedId = renewed.rows[0].id;
+            const versions = await c.query(
+              "SELECT id,revoked_at FROM table_qr_tokens WHERE table_id=$1 ORDER BY created_at,id",
+              [tableId],
+            );
+            assert.equal(versions.rows.length, 2);
+            assert.ok(versions.rows[0].revoked_at);
+            assert.equal(versions.rows[1].revoked_at, null);
+          },
+        );
+        await withTenantTransaction(
+          app,
+          "administrator_a",
+          orgA.id,
+          async (c) => {
+            assert.equal(
+              (
+                await c.query(
+                  "UPDATE table_qr_tokens SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL",
+                  [renewedId],
+                )
+              ).rowCount,
+              1,
+            );
+            assert.equal(
+              (
+                await c.query(
+                  "UPDATE table_qr_tokens SET revoked_at=now() WHERE id=$1 AND revoked_at IS NULL",
+                  [renewedId],
+                )
+              ).rowCount,
+              0,
+            );
+            assert.notEqual(renewedId, token.id);
+          },
+        );
+        await assert.rejects(
+          withTenantTransaction(app, "cashier_a", orgA.id, (c) =>
+            c.query(
+              "INSERT INTO restaurant_tables(organization_id,branch_id,table_code,display_name,seats) VALUES($1,$2,'T2','Table 2',2)",
+              [orgA.id, branchA],
+            ),
+          ),
+          { code: "42501" },
         );
       },
     );

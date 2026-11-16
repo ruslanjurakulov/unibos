@@ -183,3 +183,138 @@ test("HTTP guards reject missing sessions, forged origins, oversized bodies and 
     await new Promise((resolve) => server.close(resolve));
   }
 });
+
+test("P4 catalog mutations require an authorized MFA role and QR secrets are stored as hashes", async () => {
+  let memberships = owner;
+  let insertedTokenHash;
+  const tokenRotationQueries = [];
+  const categoryId = "5f08bc02-6c3d-4b4f-bd7a-7e155c8aa401";
+  const tableId = "acd773f8-d691-4ab0-922b-e63a60f3a5ed";
+  const pool = {
+    async connect() {
+      return {
+        async query(sql, values = []) {
+          if (String(sql).includes("private.member_of"))
+            return { rows: [{ allowed: true }] };
+          if (
+            String(sql).includes(
+              "SELECT role, branch_id FROM public.memberships",
+            )
+          )
+            return { rows: memberships };
+          if (String(sql).includes("INSERT INTO public.product_categories"))
+            return { rows: [{ id: categoryId, name: values[1] }] };
+          if (String(sql).includes("SELECT id FROM public.restaurant_tables"))
+            return { rows: [{ id: tableId }] };
+          if (
+            String(sql).includes("UPDATE public.table_qr_tokens SET revoked_at")
+          ) {
+            tokenRotationQueries.push("revoke");
+            return { rows: [], rowCount: 1 };
+          }
+          if (String(sql).includes("INSERT INTO public.table_qr_tokens")) {
+            tokenRotationQueries.push("insert");
+            insertedTokenHash = values[3];
+            return {
+              rows: [
+                {
+                  id: "204a1bb4-3632-4b61-aaf6-14e65796edaf",
+                  table_id: tableId,
+                  expires_at: values[4],
+                },
+              ],
+            };
+          }
+          return { rows: [], rowCount: 0 };
+        },
+        release() {},
+      };
+    },
+  };
+  const security = {
+    getIdentity: async () => ({
+      userId: "actor",
+      sessionId: "session",
+      mfaVerified: true,
+    }),
+    nodeHandler: async (_req, res) => res.end(),
+    close: async () => {},
+  };
+  const server = createServer((req, res) => {
+    void handleSecurityRoute(req, res, {
+      security,
+      pool,
+      trustedOrigins: [origin],
+    })
+      .then((handled) => {
+        if (!handled) {
+          res.statusCode = 404;
+          res.end();
+        }
+      })
+      .catch((error) => sendSafeApiError(res, error));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    memberships = waiter;
+    const denied = await fetch(
+      `${origin}/api/organizations/${org}/catalog/categories`,
+      {
+        method: "POST",
+        headers: { Origin: origin, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Drinks" }),
+      },
+    );
+    assert.equal(denied.status, 403);
+
+    memberships = owner;
+    const created = await fetch(
+      `${origin}/api/organizations/${org}/catalog/categories`,
+      {
+        method: "POST",
+        headers: { Origin: origin, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Drinks" }),
+      },
+    );
+    assert.equal(created.status, 201);
+    assert.equal((await created.json()).category.id, categoryId);
+
+    memberships = [{ role: "administrator", branch_id: branch }];
+    const forbiddenPrice = await fetch(
+      `${origin}/api/organizations/${org}/branches/${branch}/catalog/${categoryId}/price`,
+      {
+        method: "POST",
+        headers: { Origin: origin, "Content-Type": "application/json" },
+        body: JSON.stringify({ priceMinor: 1000, currencyCode: "UZS" }),
+      },
+    );
+    assert.equal(forbiddenPrice.status, 403);
+
+    memberships = owner;
+    const priceHistory = await fetch(
+      `${origin}/api/organizations/${org}/branches/${branch}/catalog/${categoryId}/price`,
+    );
+    assert.equal(priceHistory.status, 200);
+    assert.deepEqual((await priceHistory.json()).priceHistory, []);
+
+    const qr = await fetch(
+      `${origin}/api/organizations/${org}/branches/${branch}/tables/${tableId}/qr-tokens`,
+      {
+        method: "POST",
+        headers: { Origin: origin, "Content-Type": "application/json" },
+        body: "{}",
+      },
+    );
+    assert.equal(qr.status, 201);
+    const payload = await qr.json();
+    assert.match(payload.secret, /^[A-Za-z0-9_-]{40,}$/);
+    assert.ok(Buffer.isBuffer(insertedTokenHash));
+    assert.equal(insertedTokenHash.length, 32);
+    assert.notEqual(insertedTokenHash.toString("base64url"), payload.secret);
+    assert.deepEqual(tokenRotationQueries, ["revoke", "insert"]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});

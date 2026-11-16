@@ -37,6 +37,15 @@ const copy = {
           href: "/demo/super-admin",
           action: "Namuna interfeys",
         },
+        {
+          title: "Katalog va stollar",
+          label: "Restoran egasi",
+          description:
+            "Filial mahsulotlari, narxlari, mavjudligi va QR stol boshqaruvi.",
+          note: "Faqat brauzer ichidagi synthetic demo; backendga ulanmagan.",
+          href: "/demo/operations",
+          action: "Katalog demosini ochish",
+        },
       ],
     },
     security: {
@@ -310,6 +319,15 @@ const copy = {
           href: "/demo/super-admin",
           action: "Sample interface",
         },
+        {
+          title: "Catalog and tables",
+          label: "Restaurant owner",
+          description:
+            "Branch products, prices, availability, and QR table controls.",
+          note: "Synthetic browser demo only; no backend connection.",
+          href: "/demo/operations",
+          action: "Open catalog demo",
+        },
       ],
     },
     security: {
@@ -582,6 +600,14 @@ const copy = {
           note: "Это демо интерфейса; действующего API администратора нет.",
           href: "/demo/super-admin",
           action: "Пример интерфейса",
+        },
+        {
+          title: "Каталог и столы",
+          label: "Владелец ресторана",
+          description: "Товары филиала, цены, наличие и QR-столы.",
+          note: "Локальное демонстрационное состояние; без подключения к backend.",
+          href: "/demo/operations",
+          action: "Открыть демо каталога",
         },
       ],
     },

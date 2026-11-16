@@ -112,6 +112,7 @@ try {
     "/faq",
     "/contact",
     "/demo/guest",
+    "/demo/operations",
     "/demo/dashboard",
     "/demo/super-admin",
     "/demo/workspace",
