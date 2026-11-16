@@ -825,6 +825,206 @@ const copy = {
   },
 } as const;
 
+type SolutionsFeature = {
+  icon: "orders" | "floor" | "menu" | "inventory" | "team" | "reports";
+  title: string;
+  detail: string;
+  status: string;
+  href: string;
+};
+
+const solutionsFeatures: Record<P3Locale, readonly SolutionsFeature[]> = {
+  uz: [
+    {
+      icon: "orders",
+      title: "Buyurtma boshqaruvi",
+      detail:
+        "Savat demo sifatida ishlaydi; real buyurtma yoki to‘lov yuborilmaydi.",
+      status: "SAVAT DEMO",
+      href: "/demo/guest",
+    },
+    {
+      icon: "floor",
+      title: "Stol va zal boshqaruvi",
+      detail: "Zal va stol holatini boshqarish rejalashtirilmoqda.",
+      status: "REJADA",
+      href: "/faq#availability",
+    },
+    {
+      icon: "menu",
+      title: "Menyu (QR/NFC)",
+      detail: "QR menyu demo ishlaydi; haqiqiy NFC amali ulanmagan.",
+      status: "QR DEMO",
+      href: "/demo/guest",
+    },
+    {
+      icon: "inventory",
+      title: "Ombor va ta’minot",
+      detail: "Ombor qoldig‘i va xaridlarni boshqarish rejalashtirilgan.",
+      status: "REJADA",
+      href: "/faq#availability",
+    },
+    {
+      icon: "team",
+      title: "Xodimlar va ish vaqti",
+      detail: "Jamoa va ish smenalarini boshqarish hali mavjud emas.",
+      status: "REJADA",
+      href: "/faq#availability",
+    },
+    {
+      icon: "reports",
+      title: "Hisobot va moliya",
+      detail: "Dashboard faqat namuna ko‘rsatadi; moliya moduli yo‘q.",
+      status: "NAMUNA DASHBOARD",
+      href: "/demo/dashboard",
+    },
+  ],
+  ru: [
+    {
+      icon: "orders",
+      title: "Управление заказами",
+      detail: "Корзина работает как демо; заказ или оплата не отправляются.",
+      status: "ДЕМО КОРЗИНЫ",
+      href: "/demo/guest",
+    },
+    {
+      icon: "floor",
+      title: "Зал и столы",
+      detail: "Управление залом и состоянием столов планируется.",
+      status: "В ПЛАНАХ",
+      href: "/faq#availability",
+    },
+    {
+      icon: "menu",
+      title: "Меню (QR/NFC)",
+      detail: "Демо QR-меню работает; действия NFC не подключены.",
+      status: "ДЕМО QR",
+      href: "/demo/guest",
+    },
+    {
+      icon: "inventory",
+      title: "Склад и поставки",
+      detail: "Учёт остатков и закупок планируется.",
+      status: "В ПЛАНАХ",
+      href: "/faq#availability",
+    },
+    {
+      icon: "team",
+      title: "Команда и смены",
+      detail: "Управление командой и рабочими сменами пока недоступно.",
+      status: "В ПЛАНАХ",
+      href: "/faq#availability",
+    },
+    {
+      icon: "reports",
+      title: "Отчёты и финансы",
+      detail: "Панель показывает примеры; финансового модуля пока нет.",
+      status: "ДЕМО ПАНЕЛИ",
+      href: "/demo/dashboard",
+    },
+  ],
+  en: [
+    {
+      icon: "orders",
+      title: "Order management",
+      detail: "The cart is a demo; no real order or payment is sent.",
+      status: "CART DEMO",
+      href: "/demo/guest",
+    },
+    {
+      icon: "floor",
+      title: "Tables and floor",
+      detail: "Floor and table management is planned.",
+      status: "PLANNED",
+      href: "/faq#availability",
+    },
+    {
+      icon: "menu",
+      title: "Menu (QR/NFC)",
+      detail: "The QR menu demo works; no live NFC action is connected.",
+      status: "QR DEMO",
+      href: "/demo/guest",
+    },
+    {
+      icon: "inventory",
+      title: "Inventory and supply",
+      detail: "Stock tracking and purchasing are planned.",
+      status: "PLANNED",
+      href: "/faq#availability",
+    },
+    {
+      icon: "team",
+      title: "Team and work hours",
+      detail: "Team and shift management is not available yet.",
+      status: "PLANNED",
+      href: "/faq#availability",
+    },
+    {
+      icon: "reports",
+      title: "Reports and finance",
+      detail: "The dashboard shows samples; no finance module is live.",
+      status: "DASHBOARD DEMO",
+      href: "/demo/dashboard",
+    },
+  ],
+};
+
+const solutionFeaturePaths: Record<SolutionsFeature["icon"], string> = {
+  orders: "M7 3h10l2 3v15H5V6l2-3Zm0 3h10M8 11h8M8 15h5",
+  floor: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z",
+  menu: "M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 4h6M9 11h6M9 15h3",
+  inventory:
+    "m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm-8 4.5 8 4.5 8-4.5M12 12v9M8 5.3l8 4.5",
+  team: "M16 20v-1.5a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4V20M9.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm7-7.5a4 4 0 0 1 0 7.7M17 14.5a4 4 0 0 1 4 4V20",
+  reports: "M4 20V4m0 16h17M8 16v-5m5 5V7m5 9V9",
+};
+
+export function P3SolutionsShowcase({ locale }: { locale: P3Locale }) {
+  const cards = solutionsFeatures[locale];
+  const label =
+    locale === "uz"
+      ? "Restoran modullari"
+      : locale === "ru"
+        ? "Модули ресторана"
+        : "Restaurant modules";
+
+  return (
+    <nav aria-label={label} className={styles.solutionsFeatureGrid}>
+      {cards.map((card, index) => (
+        <Link
+          className={`${styles.solutionsFeature}${index === 0 ? ` ${styles.solutionsFeatureFeatured}` : ""}`}
+          data-motion-reveal
+          data-motion-index={index}
+          href={card.href}
+          key={card.title}
+        >
+          <svg
+            aria-hidden="true"
+            className={styles.solutionsFeatureIcon}
+            fill="none"
+            focusable="false"
+            viewBox="0 0 24 24"
+          >
+            <path
+              d={solutionFeaturePaths[card.icon]}
+              stroke="currentColor"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="1.7"
+            />
+          </svg>
+          <span className={styles.solutionsFeatureStatus}>{card.status}</span>
+          <strong>{card.title}</strong>
+          <p>{card.detail}</p>
+          <span aria-hidden="true" className={styles.solutionsFeatureArrow}>
+            ↗
+          </span>
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
 export function P3HomeAdditions({ locale }: { locale: P3Locale }) {
   const t = copy[locale].home;
   return (

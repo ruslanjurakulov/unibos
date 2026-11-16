@@ -3023,48 +3023,82 @@ button:focus-visible {
   border-radius: 8px;
   box-shadow: 0 22px 52px #051a153d;
 }
-.p3-solutions-content {
-  padding-block: 12px 58px;
+.p3-site[data-page="solutions"] > .p3-header {
+  position: absolute;
+  inset: 0 0 auto;
+  background: linear-gradient(180deg, #08251fe8, #08251f65);
+  border-radius: 0;
+  box-shadow: none;
 }
 .p3-solutions-hero {
-  padding-block: 68px 0;
+  position: relative;
+  display: flex;
+  min-height: min(900px, 100svh);
+  align-items: flex-start;
+  overflow: hidden;
+  padding: 152px 0 42px;
   background:
-    linear-gradient(90deg, #08251ff2 0%, #08251fc9 46%, #08251f8c 100%),
-    url("/images/p3/about-scene-v2.jpg") center / cover no-repeat;
+    linear-gradient(90deg, #08251fe8 0%, #08251fa8 53%, #08251f35 100%),
+    url("/images/p3/solutions-restaurant.webp") center 48% / cover no-repeat;
+  color: var(--p3-ivory);
 }
 .p3-solutions-heading {
-  padding-bottom: 23px;
+  width: min(1120px, calc(100% - 144px));
+  padding-block: 0;
 }
-.p3-solutions-heading h1 {
-  max-width: 700px;
+.p3-solutions-intro {
+  max-width: 560px;
 }
-.p3-solutions-heading > p:not(.p3-eyebrow) {
-  max-width: 600px;
-  margin: 17px 0 21px;
-  color: #e9eee0d9;
+.p3-solutions-intro h1 {
+  max-width: 500px;
+  margin: 0;
+  color: var(--p3-ivory);
+  font: 500 clamp(32px, 3.6vw, 48px) / 1.08 var(--serif);
+  letter-spacing: -0.045em;
+}
+.p3-solutions-intro > p:not(.p3-eyebrow) {
+  max-width: 430px;
+  margin: 14px 0 0;
+  color: #e9eee0e8;
+  font-size: 13px;
+  line-height: 1.65;
+}
+.p3-solutions-more {
+  background: var(--p3-ivory);
+  color: var(--p3-forest);
+}
+.p3-solutions-content {
+  padding-block: 76px 88px;
+}
+.p3-solutions-details-heading {
+  max-width: 800px;
+  margin-bottom: 24px;
+}
+.p3-solutions-details-heading h2 {
+  margin: 0;
+  color: var(--p3-forest);
+  font: 500 clamp(32px, 4vw, 48px) / 1.1 var(--serif);
+  letter-spacing: -0.04em;
+}
+.p3-solutions-details-heading > p:not(.p3-eyebrow) {
+  max-width: 620px;
+  margin: 13px 0 0;
+  color: var(--p3-muted);
   font-size: 13px;
   line-height: 1.7;
 }
-.p3-solutions-hero .p3-module-card {
-  min-height: 150px;
-  background: #fffdf8;
-  border-color: #e4e1d7;
-  color: #173d32;
+.p3-solutions-more .p3-integrity-note {
+  margin-top: 32px;
 }
-.p3-solutions-hero .p3-module-card p {
-  color: #66766b;
+.p3-dark .p3-solutions-more {
+  background: #131d18;
+  color: #edf1e9;
 }
-.p3-solutions-hero .p3-module-card:hover {
-  background: #f3f1e9;
+.p3-dark .p3-solutions-details-heading h2 {
+  color: #edf1e9;
 }
-.p3-solutions-content .p3-module-grid {
-  grid-template-columns: repeat(3, 1fr);
-}
-.p3-solutions-hero .p3-integrity-note {
-  background: #fffdf8;
-}
-.p3-solutions-hero .p3-integrity-note p {
-  color: #66766b;
+.p3-dark .p3-solutions-details-heading > p:not(.p3-eyebrow) {
+  color: #bdc7bd;
 }
 .p3-integrity-note {
   display: flex;
@@ -4065,8 +4099,7 @@ button:focus-visible {
   .p3-home-end h2 {
     font-size: 36px;
   }
-  .p3-module-grid,
-  .p3-solutions-content .p3-module-grid {
+  .p3-module-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .p3-module-card {
@@ -4988,4 +5021,61 @@ button:focus-visible {
 }
 .theme-dark .preview-unavailable p {
   color: #b4c1b5;
+}
+
+@media (max-width: 1050px) {
+  .p3-site[data-page="solutions"] .p3-solutions-hero {
+    min-height: 100svh;
+    padding-block: 100px 34px;
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-intro h1 {
+    font-size: clamp(32px, 4.4vw, 44px);
+  }
+}
+
+@media (max-width: 760px) {
+  .p3-site[data-page="solutions"] > .p3-header {
+    min-height: 66px;
+  }
+
+  .p3-site[data-page="solutions"] .p3-mobile-nav {
+    top: 66px;
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-hero {
+    min-height: 100svh;
+    align-items: flex-start;
+    padding-block: 92px 32px;
+    background-position:
+      center,
+      62% center;
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-intro h1 {
+    max-width: 620px;
+    font-size: clamp(31px, 6.1vw, 42px);
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-heading {
+    width: calc(100% - 40px);
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-content {
+    padding-block: 54px 62px;
+  }
+}
+
+@media (max-width: 500px) {
+  .p3-site[data-page="solutions"] .p3-solutions-hero {
+    padding-block: 88px 28px;
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-intro h1 {
+    font-size: clamp(30px, 8vw, 36px);
+  }
+
+  .p3-site[data-page="solutions"] .p3-solutions-intro > p:not(.p3-eyebrow) {
+    font-size: 12px;
+  }
 }

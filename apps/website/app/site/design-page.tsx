@@ -7,6 +7,7 @@ import {
   P3ExtendedPage,
   P3HomeAdditions,
   P3ProductModules,
+  P3SolutionsShowcase,
   P3SolutionsWorkflow,
   type ExtendedPage,
 } from "./p3-content";
@@ -45,6 +46,10 @@ const labels = {
       "Demo va reja ochiq ko‘rsatiladi",
     ],
     solutions: "Imkoniyatlar",
+    solutionsEyebrow: "YECHIMLAR",
+    solutionsTitle: "Restoraningiz uchun to‘liq ekotizim",
+    solutionsLead:
+      "Barcha jarayonlar — bir platformada. Modullarni ehtiyojingizga moslab tanlang va biznesingizni kengaytiring.",
     explore: "Imkoniyatlarni ko‘rish",
     demo: "Interaktiv demo",
     demoOnly: "Namuna interfeysi · Ko‘rsatkichlar demo ma’lumotidir",
@@ -169,6 +174,10 @@ const labels = {
       "Demo and planned status shown",
     ],
     solutions: "Solutions",
+    solutionsEyebrow: "SOLUTIONS",
+    solutionsTitle: "A complete ecosystem for your restaurant",
+    solutionsLead:
+      "Every process in one platform. Choose the modules you need as your business grows.",
     explore: "Explore the platform",
     demo: "Interactive demo",
     demoOnly: "Sample interface · Illustrative demo data",
@@ -296,6 +305,10 @@ const labels = {
       "Демо и планы обозначены",
     ],
     solutions: "Решения",
+    solutionsEyebrow: "РЕШЕНИЯ",
+    solutionsTitle: "Полная экосистема для вашего ресторана",
+    solutionsLead:
+      "Все процессы — на одной платформе. Выбирайте нужные модули и развивайте бизнес.",
     explore: "Возможности платформы",
     demo: "Интерактивное демо",
     demoOnly: "Пример интерфейса · демонстрационные данные",
@@ -807,16 +820,25 @@ function Solutions({
   return (
     <>
       <section className="p3-subhero p3-solutions-hero">
-        <div className="p3-wrap p3-solutions-heading" data-motion-reveal="left">
-          <Eyebrow>{t.solutions}</Eyebrow>
-          <h1>{t.modules}</h1>
-          <p>{t.modulesLead}</p>
-          <Link className="p3-button p3-button-gold" href="/demo">
-            {t.cta}
-            <span>→</span>
-          </Link>
+        <div className="p3-wrap p3-solutions-heading">
+          <div className="p3-solutions-intro" data-motion-reveal="left">
+            <Eyebrow>{t.solutionsEyebrow}</Eyebrow>
+            <h1>{t.solutionsTitle}</h1>
+            <p>{t.solutionsLead}</p>
+          </div>
+          <P3SolutionsShowcase locale={locale} />
         </div>
+      </section>
+      <section className="p3-solutions-more">
         <div className="p3-wrap p3-solutions-content">
+          <div
+            className="p3-solutions-details-heading"
+            data-motion-reveal="left"
+          >
+            <Eyebrow>{t.solutions}</Eyebrow>
+            <h2>{t.modules}</h2>
+            <p>{t.modulesLead}</p>
+          </div>
           <P3SolutionsWorkflow locale={locale} />
           <P3ProductModules locale={locale} />
           <div className="p3-integrity-note">
