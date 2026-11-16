@@ -8,6 +8,9 @@
   --line: #dfe7e2;
   --muted: #708078;
 }
+.withWorkspace {
+  padding-left: 248px;
+}
 .header {
   min-height: 78px;
   background: #fff;
@@ -889,6 +892,11 @@
   .centerState {
     margin: 14vh 14px;
     padding: 24px;
+  }
+}
+@media (max-width: 760px) {
+  .withWorkspace {
+    padding-left: 0;
   }
 }
 @media (max-width: 360px) {

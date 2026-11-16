@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./staff-workspace.module.css";
+import WorkspaceNavigation from "../workspace-navigation";
 
 type Role = "waiter" | "kitchen";
 type Organization = { id: string; name: string };
@@ -210,6 +211,7 @@ const tr = {
 
 export default function StaffWorkspace({ role }: { role: Role }) {
   const router = useRouter();
+  const refreshVersion = useRef(0);
   const [language, setLanguage] = useState<keyof typeof tr>("uz");
   const [dark, setDark] = useState(false);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
@@ -275,9 +277,44 @@ export default function StaffWorkspace({ role }: { role: Role }) {
     [organizationId, branchId, role],
   );
   const hasPendingOperation =
+    cart.length > 0 ||
     Boolean(pendingAddition) ||
     Object.keys(pendingTransitions).length > 0 ||
     Object.values(billRequests).some((request) => !request.sent);
+
+  useEffect(() => {
+    document.body.dataset.unibosWorkspaceLocked = hasPendingOperation
+      ? "true"
+      : "false";
+    return () => {
+      delete document.body.dataset.unibosWorkspaceLocked;
+    };
+  }, [hasPendingOperation]);
+
+  useEffect(() => {
+    const onWorkspaceScope = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ organizationId: string; branchId: string }>
+      ).detail;
+      if (hasPendingOperation || !detail) return;
+      if (
+        !organizations.some(
+          (organization) => organization.id === detail.organizationId,
+        )
+      )
+        return;
+      setProducts([]);
+      setTables([]);
+      setOrders([]);
+      setTickets([]);
+      setCart([]);
+      setOrganizationId(detail.organizationId);
+      setBranchId(detail.branchId);
+    };
+    window.addEventListener("unibos:workspace-scope", onWorkspaceScope);
+    return () =>
+      window.removeEventListener("unibos:workspace-scope", onWorkspaceScope);
+  }, [hasPendingOperation, organizations]);
 
   useEffect(() => {
     try {
@@ -352,8 +389,10 @@ export default function StaffWorkspace({ role }: { role: Role }) {
 
   const refresh = useCallback(async () => {
     if (!route) return;
+    const version = ++refreshVersion.current;
     try {
       const result = await get(route);
+      if (version !== refreshVersion.current) return;
       if (result.response.status === 401) {
         router.replace("/sign-in");
         return;
@@ -393,7 +432,7 @@ export default function StaffWorkspace({ role }: { role: Role }) {
             : [],
         );
     } catch {
-      setError(t.error);
+      if (version === refreshVersion.current) setError(t.error);
     }
   }, [get, role, route, router, t.error]);
 
@@ -422,6 +461,9 @@ export default function StaffWorkspace({ role }: { role: Role }) {
         }
         const rows = orgs.data.organizations as Organization[];
         setOrganizations(rows);
+        const params = new URLSearchParams(window.location.search);
+        const requestedOrganization = params.get("organizationId");
+        const requestedBranch = params.get("branchId");
         let selectedOrg = rows[0]?.id ?? "";
         let savedScope: { organizationId: string; branchId: string } | null =
           null;
@@ -498,6 +540,9 @@ export default function StaffWorkspace({ role }: { role: Role }) {
           }
           selectedOrg =
             savedScope?.organizationId ||
+            rows.find(
+              (organization) => organization.id === requestedOrganization,
+            )?.id ||
             sessionStorage.getItem(`unibos.${role}.org`) ||
             selectedOrg;
         } catch {}
@@ -517,6 +562,7 @@ export default function StaffWorkspace({ role }: { role: Role }) {
           try {
             selectedBranch =
               savedScope?.branchId ||
+              branchRows.find((branch) => branch.id === requestedBranch)?.id ||
               sessionStorage.getItem(`unibos.${role}.branch`) ||
               selectedBranch;
           } catch {}
@@ -788,7 +834,9 @@ export default function StaffWorkspace({ role }: { role: Role }) {
   }
 
   return (
-    <main className={`${styles.page} ${dark ? styles.dark : ""}`}>
+    <main
+      className={`${styles.page} ${styles.withWorkspace} ${dark ? styles.dark : ""}`}
+    >
       <header className={styles.header}>
         <a href="/dashboard" className={styles.brand}>
           <img src="/brand/mark-dark.svg" alt="" />
@@ -811,6 +859,7 @@ export default function StaffWorkspace({ role }: { role: Role }) {
           </button>
         </div>
       </header>
+      <WorkspaceNavigation dark={dark} />
       <div className={styles.wrap}>
         <div className={styles.title}>
           <div>

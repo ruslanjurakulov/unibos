@@ -1747,6 +1747,14 @@ button:focus-visible {
   background: #f2f4ef;
   color: var(--slate);
 }
+.dashboard-page.workspace-shell-enabled {
+  padding-left: 248px;
+}
+@media (max-width: 760px) {
+  .dashboard-page.workspace-shell-enabled {
+    padding-left: 0;
+  }
+}
 .dashboard-header {
   height: 72px;
   background: #fff;

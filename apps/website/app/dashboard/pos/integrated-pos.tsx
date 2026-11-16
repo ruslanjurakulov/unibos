@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./integrated-pos.module.css";
+import WorkspaceNavigation from "../workspace-navigation";
 
 type Organization = { id: string; name: string };
 type Branch = { id: string; name: string };
@@ -90,6 +91,32 @@ export default function IntegratedPos() {
   const cartTrigger = useRef<HTMLButtonElement>(null);
   const cartDialog = useRef<HTMLElement>(null);
   const wasMobileCart = useRef(false);
+  const contextRequestVersion = useRef(0);
+
+  useEffect(() => {
+    const onWorkspaceScope = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{ organizationId: string; branchId: string }>
+      ).detail;
+      if (pending || cart.length > 0 || !detail) return;
+      if (
+        !organizations.some(
+          (organization) => organization.id === detail.organizationId,
+        )
+      )
+        return;
+      setError("");
+      setProducts([]);
+      setTables([]);
+      setSelectedTable("");
+      setCart([]);
+      setOrganizationId(detail.organizationId);
+      setBranchId(detail.branchId);
+    };
+    window.addEventListener("unibos:workspace-scope", onWorkspaceScope);
+    return () =>
+      window.removeEventListener("unibos:workspace-scope", onWorkspaceScope);
+  }, [organizations, pending, cart.length]);
 
   const request = useCallback(
     async (path: string, method = "GET", body?: unknown) => {
@@ -143,8 +170,15 @@ export default function IntegratedPos() {
         throw new Error("Tashkilotlar ro‘yxatini yuklab bo‘lmadi.");
       const rows = result.data.organizations as Organization[];
       setOrganizations(rows);
+      const requestedOrganization = new URLSearchParams(
+        window.location.search,
+      ).get("organizationId");
       setOrganizationId((current) =>
-        rows.some((org) => org.id === current) ? current : (rows[0]?.id ?? ""),
+        rows.some((org) => org.id === current)
+          ? current
+          : (rows.find((org) => org.id === requestedOrganization)?.id ??
+            rows[0]?.id ??
+            ""),
       );
       if (!rows.length)
         setNotice("Kassir POS uchun avval tashkilot va filial yarating.");
@@ -208,6 +242,14 @@ export default function IntegratedPos() {
   }, [pending, pendingRestored]);
 
   useEffect(() => {
+    document.body.dataset.unibosWorkspaceLocked =
+      pending || cart.length > 0 ? "true" : "false";
+    return () => {
+      delete document.body.dataset.unibosWorkspaceLocked;
+    };
+  }, [pending, cart.length]);
+
+  useEffect(() => {
     if (!organizationId) {
       setBranches([]);
       setBranchId("");
@@ -230,10 +272,15 @@ export default function IntegratedPos() {
         const rows = result.data.branches as Branch[];
         if (!active) return;
         setBranches(rows);
+        const requestedBranch = new URLSearchParams(window.location.search).get(
+          "branchId",
+        );
         setBranchId((current) =>
           rows.some((branch) => branch.id === current)
             ? current
-            : (rows[0]?.id ?? ""),
+            : (rows.find((branch) => branch.id === requestedBranch)?.id ??
+              rows[0]?.id ??
+              ""),
         );
         if (!rows.length)
           setNotice(
@@ -256,6 +303,7 @@ export default function IntegratedPos() {
   }, [organizationId, request, router]);
 
   const refreshContext = useCallback(async () => {
+    const version = ++contextRequestVersion.current;
     if (!organizationId || !branchId) {
       setProducts([]);
       setTables([]);
@@ -267,6 +315,7 @@ export default function IntegratedPos() {
       const result = await request(
         `/api/v1/organizations/${encodeURIComponent(organizationId)}/branches/${encodeURIComponent(branchId)}/pos`,
       );
+      if (version !== contextRequestVersion.current) return;
       if (result.response.status === 401) {
         router.replace("/sign-in");
         return;
@@ -303,13 +352,14 @@ export default function IntegratedPos() {
         );
       else setNotice("");
     } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Filial katalogini yuklab bo‘lmadi.",
-      );
+      if (version === contextRequestVersion.current)
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Filial katalogini yuklab bo‘lmadi.",
+        );
     } finally {
-      setContextLoading(false);
+      if (version === contextRequestVersion.current) setContextLoading(false);
     }
   }, [organizationId, branchId, request, router]);
 
@@ -678,7 +728,7 @@ export default function IntegratedPos() {
     );
 
   return (
-    <main className={styles.page}>
+    <main className={`${styles.page} ${styles.withWorkspace}`}>
       <header className={styles.header}>
         <a className={styles.brand} href="/dashboard">
           <img src="/brand/mark-dark.svg" alt="" />
@@ -735,6 +785,7 @@ export default function IntegratedPos() {
           </label>
         </div>
       </header>
+      <WorkspaceNavigation />
       <div className={styles.connection}>
         <span>● Ulangan sessiya</span>
         <span>·</span>

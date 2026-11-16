@@ -58,7 +58,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     // Synthetic prerequisite identity table exists only inside this owned disposable test DB.
     await fixture.query("CREATE TABLE public.auth_users (id text PRIMARY KEY)");
     await fixture.query(
-      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('cashier_a'),('kitchen_a'),('outsider')",
+      "INSERT INTO public.auth_users(id) VALUES ('owner_a'),('owner_b'),('staff_a'),('administrator_a'),('director_a'),('cashier_a'),('accountant_a'),('kitchen_a'),('multi_scope_a'),('outsider')",
     );
     await migrateBusiness(fixture);
     await migrateBusiness(fixture); // An unchanged migration must be idempotent.
@@ -111,6 +111,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
     await grant("owner_a", "administrator_a", "administrator", branchA);
     await grant("owner_a", "director_a", "director", null);
     await grant("owner_a", "cashier_a", "cashier", branchA);
+    await grant("owner_a", "accountant_a", "accountant", branchA);
     await grant("owner_a", "kitchen_a", "kitchen", branchA);
 
     await t.test(
@@ -774,6 +775,128 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
             },
             ...(body ? { body: JSON.stringify(body) } : {}),
           });
+        const cashierCapabilities = await call(
+          "/api/v1/me/workspace-capabilities?role=owner",
+        );
+        assert.equal(cashierCapabilities.status, 200);
+        assert.equal(
+          cashierCapabilities.headers.get("cache-control"),
+          "no-store, private",
+        );
+        const cashierScope = await cashierCapabilities.json();
+        assert.equal(cashierScope.organizations.length, 1);
+        assert.deepEqual(
+          cashierScope.organizations[0].branches.map((item) => item.id),
+          [branchA],
+        );
+        assert.ok(
+          cashierScope.organizations[0].branches[0].capabilities.includes(
+            "orders.create",
+          ),
+        );
+        assert.ok(
+          !cashierScope.organizations[0].branches[0].capabilities.includes(
+            "kitchen.operate",
+          ),
+        );
+        actor = "kitchen_a";
+        const kitchenCapabilities = await call(
+          "/api/v1/me/workspace-capabilities",
+        );
+        assert.equal(kitchenCapabilities.status, 200);
+        const kitchenScope = await kitchenCapabilities.json();
+        assert.deepEqual(
+          kitchenScope.organizations[0].branches[0].navigation.map(
+            (item) => item.id,
+          ),
+          ["workspace", "kitchen"],
+        );
+        assert.ok(
+          !kitchenScope.organizations[0].branches[0].capabilities.includes(
+            "orders.create",
+          ),
+        );
+        actor = "administrator_a";
+        const administratorCapabilities = await call(
+          "/api/v1/me/workspace-capabilities",
+        );
+        const administratorScope = await administratorCapabilities.json();
+        assert.ok(
+          administratorScope.organizations[0].branches[0].capabilities.includes(
+            "catalog.branch.manage",
+          ),
+        );
+        assert.ok(
+          !administratorScope.organizations[0].branches[0].capabilities.includes(
+            "catalog.manage",
+          ),
+        );
+        actor = "staff_a";
+        const waiterCapabilities = await call(
+          "/api/v1/me/workspace-capabilities",
+        );
+        const waiterScope = await waiterCapabilities.json();
+        assert.deepEqual(
+          waiterScope.organizations[0].branches[0].navigation.map(
+            (item) => item.id,
+          ),
+          ["workspace", "waiter"],
+        );
+        actor = "accountant_a";
+        const accountantCapabilities = await call(
+          "/api/v1/me/workspace-capabilities",
+        );
+        const accountantScope = await accountantCapabilities.json();
+        assert.deepEqual(
+          accountantScope.organizations[0].branches[0].navigation.map(
+            (item) => item.id,
+          ),
+          ["workspace"],
+        );
+        assert.deepEqual(
+          accountantScope.organizations[0].branches[0].capabilities,
+          ["orders.read", "workspace.view"],
+        );
+        await grant("owner_a", "multi_scope_a", "director", null);
+        await withTenantTransaction(app, "owner_b", orgB.id, (client) =>
+          client.query(
+            "INSERT INTO memberships(organization_id,user_id,role,branch_id) VALUES($1,'multi_scope_a','cashier',$2)",
+            [orgB.id, branchB],
+          ),
+        );
+        actor = "multi_scope_a";
+        const ownerCapabilities = await call(
+          "/api/v1/me/workspace-capabilities",
+        );
+        const ownerScope = await ownerCapabilities.json();
+        assert.equal(ownerScope.organizations.length, 2);
+        const ownerOrganization = ownerScope.organizations.find(
+          (organization) => organization.id === orgA.id,
+        );
+        const cashierOrganization = ownerScope.organizations.find(
+          (organization) => organization.id === orgB.id,
+        );
+        assert.equal(ownerOrganization.branches.length, 2);
+        assert.deepEqual(ownerOrganization.roles, ["director"]);
+        assert.ok(
+          ownerOrganization.branches[0].effectiveRoles.includes("director"),
+        );
+        assert.deepEqual(cashierOrganization.roles, []);
+        assert.deepEqual(
+          cashierOrganization.branches.map((item) => item.roles),
+          [["cashier"]],
+        );
+        assert.ok(
+          cashierOrganization.branches[0].capabilities.includes(
+            "orders.create",
+          ),
+        );
+        assert.ok(
+          !cashierOrganization.branches[0].capabilities.includes(
+            "kitchen.operate",
+          ),
+        );
+        actor = "cashier_a";
         const payload = {
           idempotencyKey: randomUUID(),
           fulfillmentType: "DINE_IN",
@@ -1018,7 +1141,10 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           );
           await assert.rejects(
             withTenantTransaction(app, "staff_a", orgA.id, (c) =>
-              c.query("UPDATE kitchen_tickets SET status='PREPARING',version=version+1 WHERE id=$1", [result.ticketId]),
+              c.query(
+                "UPDATE kitchen_tickets SET status='PREPARING',version=version+1 WHERE id=$1",
+                [result.ticketId],
+              ),
             ),
             { code: "42501" },
           );
@@ -1065,7 +1191,10 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           );
           await assert.rejects(
             withTenantTransaction(app, "kitchen_a", orgA.id, (c) =>
-              c.query("UPDATE kitchen_tickets SET status='SERVED',version=version+1 WHERE id=$1", [result.ticketId]),
+              c.query(
+                "UPDATE kitchen_tickets SET status='SERVED',version=version+1 WHERE id=$1",
+                [result.ticketId],
+              ),
             ),
             { code: "42501" },
           );

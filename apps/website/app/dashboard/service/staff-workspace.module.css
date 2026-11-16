@@ -7,11 +7,19 @@
   --green: #0f3d32;
   --muted: #6e7b74;
 }
+.withWorkspace {
+  padding-left: 248px;
+}
 .dark {
   background: #17211d;
   color: #f7f4ec;
   --line: #35463d;
   --muted: #b7c3bb;
+}
+@media (max-width: 760px) {
+  .withWorkspace {
+    padding-left: 0;
+  }
 }
 .header {
   height: 68px;

@@ -8,6 +8,7 @@ const {
   validateUuid,
   validateName,
   canManageOrganization,
+  capabilitiesForMemberships,
   validateMembershipGrant,
   handleSecurityRoute,
   sendSafeApiError,
@@ -18,6 +19,44 @@ const branch = "bb68778e-3698-471b-9b2b-d6845b78d70e";
 const owner = [{ role: "owner", branch_id: null }];
 const director = [{ role: "director", branch_id: null }];
 const waiter = [{ role: "waiter", branch_id: branch }];
+test("workspace capabilities follow API role policy and remain scoped to supplied memberships", () => {
+  const cashierCapabilities = capabilitiesForMemberships([
+    { role: "cashier", branch_id: branch },
+  ]);
+  assert.ok(cashierCapabilities.includes("orders.create"));
+  assert.ok(cashierCapabilities.includes("waiter.operate"));
+  assert.ok(!cashierCapabilities.includes("kitchen.operate"));
+  assert.ok(!cashierCapabilities.includes("catalog.manage"));
+  const kitchenCapabilities = capabilitiesForMemberships([
+    { role: "kitchen", branch_id: branch },
+  ]);
+  assert.deepEqual(kitchenCapabilities, ["kitchen.operate", "workspace.view"]);
+  const ownerCapabilities = capabilitiesForMemberships(owner);
+  assert.ok(ownerCapabilities.includes("branches.manage"));
+  assert.ok(ownerCapabilities.includes("kitchen.operate"));
+  const directorCapabilities = capabilitiesForMemberships([
+    { role: "director", branch_id: null },
+  ]);
+  assert.ok(directorCapabilities.includes("organizations.manage"));
+  const administratorCapabilities = capabilitiesForMemberships([
+    { role: "administrator", branch_id: branch },
+  ]);
+  assert.ok(administratorCapabilities.includes("catalog.branch.manage"));
+  assert.ok(!administratorCapabilities.includes("catalog.manage"));
+  const accountantCapabilities = capabilitiesForMemberships([
+    { role: "accountant", branch_id: branch },
+  ]);
+  assert.deepEqual(accountantCapabilities, ["orders.read", "workspace.view"]);
+  const waiterCapabilities = capabilitiesForMemberships([
+    { role: "waiter", branch_id: branch },
+  ]);
+  assert.deepEqual(waiterCapabilities, [
+    "catalog.read",
+    "tables.read",
+    "waiter.operate",
+    "workspace.view",
+  ]);
+});
 test("names, UUIDs and membership grants reject client-controlled privilege escalation", () => {
   assert.equal(validateUuid(org), org);
   for (const value of ["../tenant", "1 OR 1=1", "not-a-uuid"])
@@ -181,6 +220,122 @@ test("HTTP guards reject missing sessions, forged origins, oversized bodies and 
     );
   } finally {
     await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("workspace capability endpoint derives scoped memberships from the verified session and disables caching", async () => {
+  const orgA = "0faab234-9a8a-4b25-89a2-29201c7f8acf";
+  const orgB = "1faab234-9a8a-4b25-89a2-29201c7f8acf";
+  const branchA = "bb68778e-3698-471b-9b2b-d6845b78d70e";
+  const branchB = "cb68778e-3698-471b-9b2b-d6845b78d70e";
+  let identity = null;
+  const client = {
+    async query(sql) {
+      if (
+        sql === "BEGIN" ||
+        sql === "COMMIT" ||
+        sql === "ROLLBACK" ||
+        sql.startsWith("SELECT set_config") ||
+        sql.startsWith("SET LOCAL") ||
+        sql.startsWith("RESET")
+      )
+        return { rows: [] };
+      if (
+        sql.includes("FROM public.memberships m") &&
+        sql.includes("JOIN public.organizations")
+      )
+        return {
+          rows: [
+            {
+              organization_id: orgA,
+              organization_name: "A",
+              role: "cashier",
+              branch_id: branchA,
+            },
+            {
+              organization_id: orgB,
+              organization_name: "B",
+              role: "owner",
+              branch_id: null,
+            },
+          ],
+        };
+      if (sql.includes("private.member_of"))
+        return { rows: [{ allowed: true }] };
+      if (sql.includes("FROM public.branches")) {
+        const org = this.org;
+        return {
+          rows: [
+            {
+              id: org === orgA ? branchA : branchB,
+              name: org === orgA ? "A filial" : "B filial",
+            },
+          ],
+        };
+      }
+      throw new Error(`Unexpected query: ${sql}`);
+    },
+    release() {},
+  };
+  const pool = {
+    async connect() {
+      const connection = { org: null, release() {} };
+      connection.query = async (sql, params) => {
+        if (sql.includes("SELECT set_config"))
+          connection.org = params?.[1] || null;
+        return client.query.call(connection, sql, params);
+      };
+      return connection;
+    },
+  };
+  const security = {
+    getIdentity: async () => identity,
+    nodeHandler: async () => {},
+    close: async () => {},
+  };
+  const server = createServer((req, res) => {
+    void handleSecurityRoute(req, res, { security, pool, trustedOrigins: [] })
+      .then((handled) => {
+        if (!handled) {
+          res.statusCode = 404;
+          res.end();
+        }
+      })
+      .catch((error) => sendSafeApiError(res, error));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  const origin = `http://127.0.0.1:${server.address().port}`;
+  try {
+    assert.equal(
+      (await fetch(`${origin}/api/v1/me/workspace-capabilities`)).status,
+      401,
+    );
+    identity = {
+      userId: "verified-user",
+      sessionId: "session",
+      mfaVerified: true,
+    };
+    const response = await fetch(
+      `${origin}/api/v1/me/workspace-capabilities?role=owner`,
+    );
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "no-store, private");
+    const body = await response.json();
+    assert.equal(body.organizations.length, 2);
+    const a = body.organizations.find((item) => item.id === orgA).branches[0];
+    assert.deepEqual(a.roles, ["cashier"]);
+    assert.ok(a.capabilities.includes("orders.create"));
+    assert.ok(!a.capabilities.includes("kitchen.operate"));
+    assert.deepEqual(
+      a.navigation.map((item) => item.id),
+      ["workspace", "pos", "waiter"],
+    );
+    const b = body.organizations.find((item) => item.id === orgB);
+    assert.ok(b.branches[0].capabilities.includes("kitchen.operate"));
+  } finally {
+    server.close();
+    await once(server, "close");
   }
 });
 

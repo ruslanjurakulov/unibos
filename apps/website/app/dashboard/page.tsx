@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import WorkspaceNavigation from "./workspace-navigation";
 
 type Organization = { id: string; name: string };
 type Branch = { id: string; name: string };
@@ -159,7 +160,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className={`dashboard-page${dark ? " theme-dark" : ""}`}>
+    <main
+      className={`dashboard-page workspace-shell-enabled${dark ? " theme-dark" : ""}`}
+    >
       <header className="dashboard-header">
         <Link href="/" className="dashboard-brand">
           <Image
@@ -187,6 +190,7 @@ export default function DashboardPage() {
           )}
         </nav>
       </header>
+      <WorkspaceNavigation dark={dark} />
       <div className="dashboard-wrap">
         <div className="dashboard-welcome">
           <div>

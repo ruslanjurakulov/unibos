@@ -54,6 +54,67 @@ interface Membership {
   branch_id: string | null;
 }
 
+const workspaceCapabilities: Record<Role, readonly string[]> = {
+  owner: [
+    "workspace.view",
+    "organizations.manage",
+    "branches.manage",
+    "catalog.read",
+    "catalog.manage",
+    "tables.read",
+    "tables.manage",
+    "orders.read",
+    "orders.create",
+    "waiter.operate",
+    "kitchen.operate",
+  ],
+  director: [
+    "workspace.view",
+    "organizations.manage",
+    "branches.manage",
+    "catalog.read",
+    "catalog.manage",
+    "tables.read",
+    "tables.manage",
+    "orders.read",
+    "orders.create",
+    "waiter.operate",
+    "kitchen.operate",
+  ],
+  administrator: [
+    "workspace.view",
+    "catalog.read",
+    "catalog.branch.manage",
+    "tables.read",
+    "tables.manage",
+    "orders.read",
+    "orders.create",
+    "waiter.operate",
+    "kitchen.operate",
+  ],
+  accountant: ["workspace.view", "orders.read"],
+  cashier: [
+    "workspace.view",
+    "catalog.read",
+    "tables.read",
+    "orders.read",
+    "orders.create",
+    "waiter.operate",
+  ],
+  waiter: ["workspace.view", "catalog.read", "tables.read", "waiter.operate"],
+  kitchen: ["workspace.view", "kitchen.operate"],
+};
+
+export function capabilitiesForMemberships(memberships: readonly Membership[]) {
+  return [
+    ...new Set(
+      memberships.flatMap(
+        (membership) => workspaceCapabilities[membership.role] ?? [],
+      ),
+    ),
+  ].sort();
+}
+
 export function validateUuid(value: string): string {
   if (!uuidPattern.test(value)) throw new ApiAccessError(400);
   return value;
@@ -639,6 +700,156 @@ export async function handleSecurityRoute(
     json(response, 200, {
       userId: identity.userId,
       mfaVerified: identity.mfaVerified,
+    });
+    return true;
+  }
+  if (
+    path === "/api/v1/me/workspace-capabilities" &&
+    request.method === "GET"
+  ) {
+    const membershipRows = await withUserTransaction(
+      options.pool,
+      identity.userId,
+      async (client) =>
+        (
+          await client.query<{
+            organization_id: string;
+            organization_name: string;
+            role: Role;
+            branch_id: string | null;
+          }>(
+            `SELECT o.id AS organization_id, o.name AS organization_name,
+                m.role, m.branch_id
+           FROM public.memberships m
+           JOIN public.organizations o ON o.id = m.organization_id
+          WHERE m.user_id = $1
+          ORDER BY o.name, m.branch_id NULLS FIRST, m.role
+          LIMIT 1000`,
+            [identity.userId],
+          )
+        ).rows,
+    );
+    const grouped = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        roles: Role[];
+        branches: Array<{ id: string; name: string; roles: Role[] }>;
+      }
+    >();
+    for (const row of membershipRows) {
+      let organization = grouped.get(row.organization_id);
+      if (!organization) {
+        organization = {
+          id: row.organization_id,
+          name: row.organization_name,
+          roles: [],
+          branches: [],
+        };
+        grouped.set(row.organization_id, organization);
+      }
+      if (row.branch_id === null) organization.roles.push(row.role);
+      else {
+        const branch = organization.branches.find(
+          (item) => item.id === row.branch_id,
+        );
+        if (branch) branch.roles.push(row.role);
+        else
+          organization.branches.push({
+            id: row.branch_id,
+            name: "",
+            roles: [row.role],
+          });
+      }
+    }
+    const organizations = await Promise.all(
+      [...grouped.values()].map(async (organization) => {
+        const branches = await withTenantTransaction(
+          options.pool,
+          identity.userId,
+          organization.id,
+          async (client) =>
+            (
+              await client.query<{ id: string; name: string }>(
+                "SELECT id, name FROM public.branches ORDER BY name, id LIMIT 500",
+              )
+            ).rows,
+        );
+        const branchRoles = new Map(
+          organization.branches.map((branch) => [branch.id, branch.roles]),
+        );
+        const orgCapabilities = capabilitiesForMemberships(
+          organization.roles.map((role) => ({ role, branch_id: null })),
+        );
+        return {
+          id: organization.id,
+          name: organization.name,
+          roles: [...new Set(organization.roles)].sort(),
+          capabilities: orgCapabilities,
+          branches: branches.map((branch) => {
+            const roles = [
+              ...new Set(branchRoles.get(branch.id) ?? []),
+            ].sort() as Role[];
+            const effectiveRoles = [
+              ...new Set([...organization.roles, ...roles]),
+            ].sort();
+            const memberships = [
+              ...organization.roles.map((role) => ({ role, branch_id: null })),
+              ...roles.map((role) => ({ role, branch_id: branch.id })),
+            ];
+            const capabilities = capabilitiesForMemberships(memberships);
+            return {
+              id: branch.id,
+              name: branch.name,
+              roles,
+              effectiveRoles,
+              capabilities,
+              navigation: [
+                ...(capabilities.includes("workspace.view")
+                  ? [
+                      {
+                        href: `/dashboard?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "workspace",
+                      },
+                    ]
+                  : []),
+                ...(capabilities.includes("orders.create")
+                  ? [
+                      {
+                        href: `/dashboard/pos?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "pos",
+                      },
+                    ]
+                  : []),
+                ...(capabilities.includes("waiter.operate")
+                  ? [
+                      {
+                        href: `/dashboard/waiter?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "waiter",
+                      },
+                    ]
+                  : []),
+                ...(capabilities.includes("kitchen.operate")
+                  ? [
+                      {
+                        href: `/dashboard/kitchen?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "kitchen",
+                      },
+                    ]
+                  : []),
+              ],
+            };
+          }),
+        };
+      }),
+    );
+    response.setHeader("Cache-Control", "no-store, private");
+    json(response, 200, {
+      version: 1,
+      generatedAt: new Date().toISOString(),
+      userId: identity.userId,
+      organizations,
     });
     return true;
   }
