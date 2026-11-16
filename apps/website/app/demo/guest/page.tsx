@@ -2,7 +2,14 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type AnimationEvent,
+} from "react";
+import { useMotionReveals } from "../../site/motion";
 
 type Locale = "uz" | "en" | "ru";
 type Category = "All" | "Fresh" | "Mains";
@@ -165,14 +172,19 @@ const products = [
 ] as const;
 
 export default function GuestDemoPage() {
+  useMotionReveals(".guest-page");
   const [locale, setLocale] = useState<Locale>("uz");
   const [dark, setDark] = useState(false);
   const [category, setCategory] = useState<Category>("All");
   const [cart, setCart] = useState<Record<string, number>>({});
   const [cartOpen, setCartOpen] = useState(false);
   const [notice, setNotice] = useState("");
+  const [removingProducts, setRemovingProducts] = useState<
+    Record<string, boolean>
+  >({});
   const cartDialogRef = useRef<HTMLDialogElement>(null);
   const cartTriggerRef = useRef<HTMLButtonElement>(null);
+  const removalTimeoutsRef = useRef(new Map<string, number>());
   useEffect(() => {
     try {
       const saved = localStorage.getItem("unibos-locale");
@@ -184,6 +196,36 @@ export default function GuestDemoPage() {
     } catch {
       /* keep Uzbek default */
     }
+  }, []);
+
+  useEffect(() => {
+    const motionPreference = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    );
+    const completePendingRemovals = (event: MediaQueryListEvent) => {
+      if (!event.matches) return;
+      const pending = [...removalTimeoutsRef.current.keys()];
+      for (const timeout of removalTimeoutsRef.current.values()) {
+        window.clearTimeout(timeout);
+      }
+      removalTimeoutsRef.current.clear();
+      if (pending.length > 0) {
+        setCart((current) => {
+          const next = { ...current };
+          for (const id of pending) delete next[id];
+          return next;
+        });
+        setRemovingProducts({});
+      }
+    };
+    motionPreference.addEventListener("change", completePendingRemovals);
+    return () => {
+      motionPreference.removeEventListener("change", completePendingRemovals);
+      for (const timeout of removalTimeoutsRef.current.values()) {
+        window.clearTimeout(timeout);
+      }
+      removalTimeoutsRef.current.clear();
+    };
   }, []);
   const t = copy[locale];
   const shown = useMemo(
@@ -227,6 +269,36 @@ export default function GuestDemoPage() {
       delete next[id];
       return next;
     });
+  }
+
+  function completeProductRemoval(id: string) {
+    const timeout = removalTimeoutsRef.current.get(id);
+    if (timeout !== undefined) window.clearTimeout(timeout);
+    removalTimeoutsRef.current.delete(id);
+    removeProduct(id);
+    setRemovingProducts((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function requestProductRemoval(id: string) {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      completeProductRemoval(id);
+      return;
+    }
+    setRemovingProducts((current) => ({ ...current, [id]: true }));
+    const timeout = window.setTimeout(() => completeProductRemoval(id), 260);
+    removalTimeoutsRef.current.set(id, timeout);
+  }
+
+  function finishProductRemoval(
+    event: AnimationEvent<HTMLLIElement>,
+    id: string,
+  ) {
+    if (event.animationName !== "guest-cart-line-out") return;
+    completeProductRemoval(id);
   }
 
   return (
@@ -299,7 +371,7 @@ export default function GuestDemoPage() {
         </nav>
       </header>
       <div className="guest-layout">
-        <div className="guest-hero">
+        <div className="guest-hero" data-motion-intro="art">
           <div
             className="guest-hero-scene"
             role="img"
@@ -310,7 +382,7 @@ export default function GuestDemoPage() {
             <span className="guest-hero-badge">QR / NFC · DEMO</span>
           </div>
         </div>
-        <div className="guest-menu">
+        <div className="guest-menu" data-motion-intro="body">
           <div className="guest-info">
             <small>{t.restaurant}</small>
             <h1>{t.menu}</h1>
@@ -369,8 +441,11 @@ export default function GuestDemoPage() {
               {notice}. {t.noOrder}
             </div>
           )}
-          <div className="guest-cart">
-            <span>
+          <div className={`guest-cart${count > 0 ? " has-items" : ""}`}>
+            <span
+              key={`${count}-${total.toFixed(2)}`}
+              className="guest-cart-count"
+            >
               {t.cart} · {count} {count === 1 ? t.item : t.items} · $
               {total.toFixed(2)}
             </span>
@@ -449,7 +524,13 @@ export default function GuestDemoPage() {
                 );
                 const quantity = cart[product.id] ?? 0;
                 return (
-                  <li className="guest-cart-line" key={product.id}>
+                  <li
+                    className={`guest-cart-line${removingProducts[product.id] ? " is-removing" : ""}`}
+                    key={product.id}
+                    onAnimationEnd={(event) =>
+                      finishProductRemoval(event, product.id)
+                    }
+                  >
                     <div className="guest-cart-product">
                       <b>{t.names[index]}</b>
                       <span>
@@ -467,7 +548,10 @@ export default function GuestDemoPage() {
                       >
                         −
                       </button>
-                      <output aria-label={`${t.names[index]} quantity`}>
+                      <output
+                        key={quantity}
+                        aria-label={`${t.names[index]} quantity`}
+                      >
                         {quantity}
                       </output>
                       <button
@@ -481,7 +565,7 @@ export default function GuestDemoPage() {
                         type="button"
                         className="guest-cart-remove"
                         aria-label={`${t.remove}: ${t.names[index]}`}
-                        onClick={() => removeProduct(product.id)}
+                        onClick={() => requestProductRemoval(product.id)}
                       >
                         {t.remove}
                       </button>

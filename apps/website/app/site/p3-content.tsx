@@ -835,7 +835,7 @@ export function P3HomeAdditions({ locale }: { locale: P3Locale }) {
           <h2 id="workflow-title">{t.title}</h2>
           <ol className={styles.steps}>
             {t.steps.map(([title, detail], index) => (
-              <li key={title}>
+              <li key={title} data-motion-reveal data-motion-index={index}>
                 <span>{String(index + 1).padStart(2, "0")}</span>
                 <div>
                   <b>{title}</b>
@@ -848,7 +848,7 @@ export function P3HomeAdditions({ locale }: { locale: P3Locale }) {
       </section>
       <section className={styles.trust}>
         <div className="p3-wrap">
-          <div>
+          <div data-motion-reveal="left">
             <p className={styles.eyebrow}>
               {locale === "uz"
                 ? "XAVFSIZLIK"
@@ -876,8 +876,8 @@ export function P3HomeAdditions({ locale }: { locale: P3Locale }) {
         }
       >
         <div className="p3-wrap">
-          {t.audiences.map(([title, detail, action, href]) => (
-            <article key={title}>
+          {t.audiences.map(([title, detail, action, href], index) => (
+            <article key={title} data-motion-reveal data-motion-index={index}>
               <h3>{title}</h3>
               <p>{detail}</p>
               <Link href={href}>
@@ -911,7 +911,13 @@ export function P3ProductModules({ locale }: { locale: P3Locale }) {
       </p>
       <div className={styles.modules}>
         {modules.map(([name, description, status, href], index) => (
-          <Link className={styles.module} href={href} key={name}>
+          <Link
+            className={styles.module}
+            href={href}
+            key={name}
+            data-motion-reveal
+            data-motion-index={index % 6}
+          >
             <span className={styles.moduleNumber}>
               {String(index + 1).padStart(2, "0")}
             </span>
@@ -940,7 +946,12 @@ export function P3SolutionsWorkflow({ locale }: { locale: P3Locale }) {
     <section className={styles.workflowOverview} aria-label={label}>
       <div className={styles.workflowSteps}>
         {steps.map(([name, status, href], index) => (
-          <Link href={href} key={name}>
+          <Link
+            href={href}
+            key={name}
+            data-motion-reveal
+            data-motion-index={index}
+          >
             <span>{String(index + 1).padStart(2, "0")}</span>
             <b>{name}</b>
             <small>{status}</small>
@@ -961,12 +972,17 @@ export function P3ExtendedPage({
   if (page === "demoHub") {
     const t = copy[locale].demoHub;
     return (
-      <section className={styles.page}>
+      <section className={`${styles.page} p3-content p3-content-${page}`}>
         <div className="p3-wrap">
           <Header eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
           <div className={styles.demoGrid}>
             {t.cards.map((card, index) => (
-              <article className={styles.demoCard} key={card.href}>
+              <article
+                className={styles.demoCard}
+                key={card.href}
+                data-motion-reveal
+                data-motion-index={index}
+              >
                 <span className={styles.moduleNumber}>0{index + 1}</span>
                 <small>{card.label}</small>
                 <h2>{card.title}</h2>
@@ -986,13 +1002,13 @@ export function P3ExtendedPage({
   if (page === "security") {
     const t = copy[locale].security;
     return (
-      <section className={styles.page}>
+      <section className={`${styles.page} p3-content p3-content-${page}`}>
         <div className="p3-wrap">
           <Header eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
           <h2 className={styles.sectionTitle}>{t.implemented}</h2>
           <div className={styles.controlGrid}>
             {t.controls.map(([title, body], index) => (
-              <article key={title}>
+              <article key={title} data-motion-reveal data-motion-index={index}>
                 <span className={styles.moduleNumber}>0{index + 1}</span>
                 <h3>{title}</h3>
                 <p>{body}</p>
@@ -1017,7 +1033,7 @@ export function P3ExtendedPage({
   if (page === "investors") {
     const t = copy[locale].investors;
     return (
-      <section className={styles.page}>
+      <section className={`${styles.page} p3-content p3-content-${page}`}>
         <div className="p3-wrap">
           <Header eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
           <div className={styles.investorGrid}>
@@ -1054,7 +1070,10 @@ export function P3ExtendedPage({
   }
   const t = copy[locale].faq;
   return (
-    <section className={styles.page} id="availability">
+    <section
+      className={`${styles.page} p3-content p3-content-${page}`}
+      id="availability"
+    >
       <div className="p3-wrap">
         <Header eyebrow={t.eyebrow} title={t.title} lead={t.lead} />
         <div className={styles.faqList}>
@@ -1064,6 +1083,8 @@ export function P3ExtendedPage({
                 index === 4 ? "pricing" : index === 6 ? "security" : undefined
               }
               key={question}
+              data-motion-reveal
+              data-motion-index={index % 5}
             >
               <summary>
                 <span>{question}</span>

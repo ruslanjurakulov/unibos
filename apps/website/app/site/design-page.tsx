@@ -10,6 +10,7 @@ import {
   P3SolutionsWorkflow,
   type ExtendedPage,
 } from "./p3-content";
+import { useMotionReveals } from "./motion";
 
 type Locale = "uz" | "ru" | "en";
 type Page =
@@ -408,6 +409,7 @@ const adminRows = [
 ] as const;
 
 export function DesignPage({ page }: { page: Page }) {
+  useMotionReveals();
   const [locale, setLocale] = useState<Locale>("uz");
   const [dark, setDark] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -452,9 +454,16 @@ export function DesignPage({ page }: { page: Page }) {
   }
 
   return (
-    <main className={`p3-site${dark ? " p3-dark" : ""}`} lang={locale}>
+    <main
+      className={`p3-site${dark ? " p3-dark" : ""}`}
+      data-page={page}
+      lang={locale}
+    >
       {page !== "dashboard" && page !== "admin" && (
-        <header className={`p3-header${menuOpen ? " p3-menu-open" : ""}`}>
+        <header
+          className={`p3-header${menuOpen ? " p3-menu-open" : ""}`}
+          data-motion-intro={page === "home" ? "nav" : undefined}
+        >
           <Link href="/" className="p3-brand" aria-label="UniBOS — bosh sahifa">
             <Image
               src="/brand/wordmark-dark.svg"
@@ -647,9 +656,15 @@ export function DesignPage({ page }: { page: Page }) {
   );
 }
 
-function Eyebrow({ children }: { children: ReactNode }) {
+function Eyebrow({
+  children,
+  motion,
+}: {
+  children: ReactNode;
+  motion?: string;
+}) {
   return (
-    <p className="p3-eyebrow">
+    <p className="p3-eyebrow" data-motion-intro={motion}>
       <span />
       {children}
     </p>
@@ -661,10 +676,10 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
     <>
       <section className="p3-home-hero" id="platform">
         <div className="p3-hero-copy">
-          <Eyebrow>{t.homeEyebrow}</Eyebrow>
-          <h1>{t.homeTitle}</h1>
-          <p>{t.homeLead}</p>
-          <div className="p3-hero-actions">
+          <Eyebrow motion="eyebrow">{t.homeEyebrow}</Eyebrow>
+          <h1 data-motion-intro="headline">{t.homeTitle}</h1>
+          <p data-motion-intro="body">{t.homeLead}</p>
+          <div className="p3-hero-actions" data-motion-intro="actions">
             <Link className="p3-button p3-button-gold" href="/demo">
               {t.cta}
               <span>→</span>
@@ -674,13 +689,15 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
               <span>→</span>
             </Link>
           </div>
-          <div className="p3-hero-points">
-            {t.homePoints.map((point) => (
-              <span key={point}>◈ {point}</span>
+          <div className="p3-hero-points" data-motion-intro="points">
+            {t.homePoints.map((point, index) => (
+              <span key={point} data-motion-index={index}>
+                ◈ {point}
+              </span>
             ))}
           </div>
         </div>
-        <div className="p3-hero-art">
+        <div className="p3-hero-art" data-motion-intro="art">
           <Image
             src="/images/p3/hero-scene.jpg"
             alt={
@@ -709,8 +726,8 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
         </div>
       </section>
       <section className="p3-home-modules p3-wrap">
-        <div className="p3-section-heading">
-          <div>
+        <div className="p3-section-heading" data-motion-reveal="left">
+          <div data-motion-reveal="left">
             <Eyebrow>{t.solutions}</Eyebrow>
             <h2>{t.modules}</h2>
           </div>
@@ -726,17 +743,25 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
             <p>{t.demoOnly}</p>
           </div>
           <div className="p3-demo-links">
-            <Link href="/demo/guest">
+            <Link href="/demo/guest" data-motion-reveal>
               <span>01</span>
               <b>{t.guest}</b>
               <i>→</i>
             </Link>
-            <Link href="/demo/dashboard">
+            <Link
+              href="/demo/dashboard"
+              data-motion-reveal
+              data-motion-index="1"
+            >
               <span>02</span>
               <b>{t.dashboard}</b>
               <i>→</i>
             </Link>
-            <Link href="/demo/super-admin">
+            <Link
+              href="/demo/super-admin"
+              data-motion-reveal
+              data-motion-index="2"
+            >
               <span>03</span>
               <b>{t.admin}</b>
               <i>→</i>
@@ -745,7 +770,7 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
         </div>
       </section>
       <section className="p3-home-end p3-wrap">
-        <div>
+        <div data-motion-reveal="left">
           <Eyebrow>
             {locale === "uz"
               ? "BIZ HAQIMIZDA"
@@ -764,6 +789,7 @@ function Home({ t, locale }: { t: (typeof labels)[Locale]; locale: Locale }) {
           alt="Restoran interyeri"
           width={400}
           height={300}
+          data-motion-reveal="scale"
         />
       </section>
       <P3HomeAdditions locale={locale} />
@@ -781,7 +807,7 @@ function Solutions({
   return (
     <>
       <section className="p3-subhero p3-solutions-hero">
-        <div className="p3-wrap p3-solutions-heading">
+        <div className="p3-wrap p3-solutions-heading" data-motion-reveal="left">
           <Eyebrow>{t.solutions}</Eyebrow>
           <h1>{t.modules}</h1>
           <p>{t.modulesLead}</p>
@@ -809,7 +835,7 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
   return (
     <section className="p3-pricing-page">
       <div className="p3-wrap p3-pricing-grid">
-        <div className="p3-pricing-intro">
+        <div className="p3-pricing-intro" data-motion-reveal="left">
           <Eyebrow>{t.nav[2]}</Eyebrow>
           <h1>{t.pricingTitle}</h1>
           <p>{t.pricingLead}</p>
@@ -844,6 +870,10 @@ function Pricing({ t }: { t: (typeof labels)[Locale] }) {
           .map((plan) => (
             <article
               className={`p3-price-card${plan.name === "Business" ? " featured" : ""}`}
+              data-motion-reveal="up"
+              data-motion-index={
+                plan.name === "Pro" ? 2 : plan.name === "Business" ? 1 : 0
+              }
               key={plan.name}
             >
               <h2 className="p3-plan-name">{plan.name}</h2>
@@ -884,7 +914,7 @@ function About({ t }: { t: (typeof labels)[Locale] }) {
   return (
     <>
       <section className="p3-about-hero p3-wrap">
-        <div>
+        <div data-motion-reveal="left">
           <Eyebrow>{t.nav[4]}</Eyebrow>
           <h1>{t.aboutTitle}</h1>
           <p>{t.aboutLead}</p>
@@ -894,17 +924,18 @@ function About({ t }: { t: (typeof labels)[Locale] }) {
           alt="Yorug‘ va zamonaviy restoran interyeri"
           width={520}
           height={340}
+          data-motion-reveal="scale"
         />
       </section>
       <section className="p3-about-values">
         <div className="p3-wrap p3-values-grid">
-          <div>
+          <div data-motion-reveal="left">
             <Eyebrow>{t.mission}</Eyebrow>
             <h2>{t.missionText}</h2>
           </div>
           <div className="p3-value-cards">
             {t.valuesText.map((value, index) => (
-              <article key={value}>
+              <article key={value} data-motion-reveal data-motion-index={index}>
                 <span>0{index + 1}</span>
                 <b>{value}</b>
                 <p>{t.modulesLead}</p>
@@ -922,7 +953,7 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
 
   return (
     <section className="p3-contact-page p3-wrap">
-      <div className="p3-contact-copy">
+      <div className="p3-contact-copy" data-motion-reveal="left">
         <Eyebrow>{t.contactNav}</Eyebrow>
         <h1>{t.contactTitle}</h1>
         <p>{t.contactLead}</p>
@@ -934,7 +965,7 @@ function Contact({ t }: { t: (typeof labels)[Locale] }) {
           </div>
         </div>
       </div>
-      <div className="p3-contact-card">
+      <div className="p3-contact-card" data-motion-reveal="scale">
         <div
           className="p3-contact-form"
           role="group"
