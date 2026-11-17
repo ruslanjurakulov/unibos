@@ -155,3 +155,7 @@ The earlier full P4 quality-gate results apply to the exact P4 implementation SH
 ## 10. Actions not taken
 
 No repository visibility change, PR merge, push to `main`, Vercel project/production-setting change, production deployment or promotion, domain/DNS change, production database migration, paid infrastructure purchase, branch/worktree deletion, or Nightshift operation occurred. Existing worktrees and migrations were preserved.
+
+## Superseding owner decision — 2026-11-17
+
+The owner subsequently decided that the repository must remain Public until the product is ready. This newer, explicit decision supersedes the immediate Private-transition recommendation above; it does not weaken the confidentiality controls. The current authorized exception and its end conditions are recorded in `CONFIDENTIALITY.md` and `docs/P4_4_7_PUBLIC_DEVELOPMENT_AND_MERGE_SAFETY.md`. The historical audit findings about disabled branch-rule enforcement and unverified production controls remain in effect.
