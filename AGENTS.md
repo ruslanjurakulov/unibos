@@ -4,4 +4,4 @@ Founder approves scope, budget, paid operations and publication. Architect owns 
 
 Mandatory: follow [CONFIDENTIALITY.md](CONFIDENTIALITY.md). Repository is initialized as private; no public deployment authorized.
 
-Owner-authorized temporary Public development exception: see the latest dated section in `CONFIDENTIALITY.md`. This exception does not authorize production deployment, disclosure of secrets or customer data, or visibility changes without separate owner approval.
+Owner-authorized temporary Public development exception: see the latest dated section in `CONFIDENTIALITY.md`. Its permitted scope includes approved documentation and safe changes on feature branches for this repository. It never authorizes pushes to `main`, production deployment or promotion, disclosure of secrets or customer data, or visibility changes without separate owner approval.
