@@ -549,7 +549,15 @@
     line-height: 1.5;
   }
 }
+
 @media (max-width: 360px) {
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .actions {
+    margin-left: auto;
+  }
   .products {
     grid-template-columns: 1fr;
   }
