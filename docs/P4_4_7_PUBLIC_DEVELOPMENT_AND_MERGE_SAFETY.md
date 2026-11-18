@@ -12,11 +12,11 @@ The owner has authorized the UniBOS repository to remain **Public until the prod
 
 Repository: `ruslanjurakulov/unibos`; GitHub reports visibility `public`. The connected identity has `admin` permission. Default branch SHA: `b1e6a75c9beec77ab2ab744a3367caceae409b1f`.
 
-| PR | Scope | State | Base SHA | Head SHA | Exact workflow checks |
-| --- | --- | --- | --- | --- | --- |
-| #4 | P3 website | Open, non-draft, mergeable | `main` / `b1e6a75c9beec77ab2ab744a3367caceae409b1f` | `feat/p3-website-preview` / `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | `verify` PASS (run 29); `brand-static` PASS (run 33); Vercel PASS |
-| #6 | P4 operations through P4.4.5 | Open, non-draft, mergeable | `feat/p3-website-preview` / `80257b46ebec29c9501473c2e8aac86ce0549838` | `feat/p4-restaurant-operations` / `f1a23f2951505d9bc03222dcaae527bedf973d6a` | `verify` PASS (run 34); `brand-static` PASS (run 38); Vercel PASS |
-| #5 | P4.7 roadmap document | Open, **draft**, mergeable | `feat/p3-website-preview` / `80257b46ebec29c9501473c2e8aac86ce0549838` | `docs/p47-restaurant-storefront-plan` / `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | `verify` PASS (run 20); `brand-static` PASS (run 24); Vercel PASS |
+| PR  | Scope                        | State                      | Base SHA                                                               | Head SHA                                                                           | Exact workflow checks                                             |
+| --- | ---------------------------- | -------------------------- | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| #4  | P3 website                   | Open, non-draft, mergeable | `main` / `b1e6a75c9beec77ab2ab744a3367caceae409b1f`                    | `feat/p3-website-preview` / `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a`             | `verify` PASS (run 29); `brand-static` PASS (run 33); Vercel PASS |
+| #6  | P4 operations through P4.4.5 | Open, non-draft, mergeable | `feat/p3-website-preview` / `80257b46ebec29c9501473c2e8aac86ce0549838` | `feat/p4-restaurant-operations` / `f1a23f2951505d9bc03222dcaae527bedf973d6a`       | `verify` PASS (run 34); `brand-static` PASS (run 38); Vercel PASS |
+| #5  | P4.7 roadmap document        | Open, **draft**, mergeable | `feat/p3-website-preview` / `80257b46ebec29c9501473c2e8aac86ce0549838` | `docs/p47-restaurant-storefront-plan` / `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | `verify` PASS (run 20); `brand-static` PASS (run 24); Vercel PASS |
 
 The Engineering workflow job name is `verify`; the Brand Audit job name is `brand-static`. These exact successful check-run names were read from GitHub Actions runs for the PR head SHAs above. These checks are not currently enforced on `main`.
 
@@ -96,11 +96,11 @@ main @ b1e6a75
   └─ PR #5 roadmap @ 1062be2 (third only after separate draft/content review)
 ```
 
-| PR | Readiness | Remaining before merge |
-| --- | --- | --- |
-| #4 | **BLOCKED** | Gate A (ruleset activation) and Gate B (Vercel release strategy) approval; current head CI/Preview pass, but enforcement and production setting are not active/verified. |
-| #6 | **BLOCKED** | #4 dependency; update its base after #4, inspect complete diff/migration sequence and rerun full gates on the exact candidate SHA; then separate approval. |
-| #5 | **BLOCKED** | Still draft; review its document scope and consistency, retarget to current `main` after #4, run checks, then separate approval. |
+| PR  | Readiness   | Remaining before merge                                                                                                                                                   |
+| --- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| #4  | **BLOCKED** | Gate A (ruleset activation) and Gate B (Vercel release strategy) approval; current head CI/Preview pass, but enforcement and production setting are not active/verified. |
+| #6  | **BLOCKED** | #4 dependency; update its base after #4, inspect complete diff/migration sequence and rerun full gates on the exact candidate SHA; then separate approval.               |
+| #5  | **BLOCKED** | Still draft; review its document scope and consistency, retarget to current `main` after #4, run checks, then separate approval.                                         |
 
 The branches currently report mergeable, but #6 and #5 are based on older P3 SHA `80257b46…`. A local read-only merge-tree simulation of current P3 and P4 produced tree `dc4d71ac77267965124f9c900108de6e33995963` without conflicts. This is not a merge commit SHA. Expected resulting commit IDs depend on the chosen merge method and must be verified after each separately approved merge.
 
@@ -108,25 +108,25 @@ Recommended sequence: (1) approve and activate GitHub `main` protections; (2) ap
 
 ## 7. Verification record
 
-| Verification | SHA / reference | Result |
-| --- | --- | --- |
-| PR #4 Engineering `verify` run 29 | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS |
-| PR #4 Brand `brand-static` run 33 | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS |
-| PR #4 Vercel Preview check | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS |
-| PR #6 Engineering `verify` run 34 | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS |
-| PR #6 Brand `brand-static` run 38 | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS |
-| PR #6 Vercel Preview and HTTP fetch | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS; READY / HTTP 200 |
-| PR #5 Engineering `verify` run 20 | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS |
-| PR #5 Brand `brand-static` run 24 | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS |
-| PR #5 Vercel Preview check | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS |
-| `npm run security:secrets` | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS; heuristic/current-tree only |
-| GitHub main ruleset | id `27314327` | FAIL as enforced protection: disabled; no required checks |
-| Classic branch protection endpoint | `main` | BLOCKED; 403 from GitHub integration |
-| Private repo CI/Vercel behavior | N/A | NOT TESTED; repo intentionally stays Public |
-| Production Branch, manual release permissions | N/A | NOT TESTED; project response does not expose settings |
-| Production deployment test | N/A | NOT TESTED; no production event created |
-| Full history secret audit / credential rotation | N/A | NOT TESTED |
-| Independent reviewer | N/A | NOT TESTED; this review was performed by the primary agent |
+| Verification                                    | SHA / reference                            | Result                                                     |
+| ----------------------------------------------- | ------------------------------------------ | ---------------------------------------------------------- |
+| PR #4 Engineering `verify` run 29               | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS                                                       |
+| PR #4 Brand `brand-static` run 33               | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS                                                       |
+| PR #4 Vercel Preview check                      | `0a7528a45d4ee85ff2ef624c3a4baf8051d3752a` | PASS                                                       |
+| PR #6 Engineering `verify` run 34               | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS                                                       |
+| PR #6 Brand `brand-static` run 38               | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS                                                       |
+| PR #6 Vercel Preview and HTTP fetch             | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS; READY / HTTP 200                                     |
+| PR #5 Engineering `verify` run 20               | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS                                                       |
+| PR #5 Brand `brand-static` run 24               | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS                                                       |
+| PR #5 Vercel Preview check                      | `1062be2c14cdd732619a6c0bcbeb98ada46f4999` | PASS                                                       |
+| `npm run security:secrets`                      | `f1a23f2951505d9bc03222dcaae527bedf973d6a` | PASS; heuristic/current-tree only                          |
+| GitHub main ruleset                             | id `27314327`                              | FAIL as enforced protection: disabled; no required checks  |
+| Classic branch protection endpoint              | `main`                                     | BLOCKED; 403 from GitHub integration                       |
+| Private repo CI/Vercel behavior                 | N/A                                        | NOT TESTED; repo intentionally stays Public                |
+| Production Branch, manual release permissions   | N/A                                        | NOT TESTED; project response does not expose settings      |
+| Production deployment test                      | N/A                                        | NOT TESTED; no production event created                    |
+| Full history secret audit / credential rotation | N/A                                        | NOT TESTED                                                 |
+| Independent reviewer                            | N/A                                        | NOT TESTED; this review was performed by the primary agent |
 
 The exact P3/P4/P4.7 SHA checks above predate this documentation change and do not attest to this new commit. Browser/responsive suites were not rerun because no application/UI code changed. No claim of live API/database integration is made.
 
@@ -135,6 +135,18 @@ Additional read-only Preview route checks on the same P4 deployment returned HTT
 The documentation branch was pushed as `e8e3c7a1cb007272a0e23dd8a8e41b7674acc10d`. Vercel created Preview `dpl_EwhZs5jbiTdiBmLTJWgUFqqgrsAQ` at https://unibos-jbxwsa8vb-ruslanjurakulov9-1482.vercel.app/ with `target: null`, exact matching branch/SHA, and READY status. HTTP route checks on this exact documentation Preview returned 200 for `/`, `/solutions`, `/demo`, `/demo/operations`, `/demo/pos`, `/dashboard/menu`, `/dashboard/pos`, `/dashboard/waiter`, `/dashboard/kitchen`, `/dashboard/shifts`, and `/dashboard/payments`. No production-target deployment was created. GitHub Actions returned no run for this documentation-branch push because the workflows trigger on pull requests or `main` pushes; no PR was opened.
 
 This task's fresh full local regression was **BLOCKED** by disk exhaustion before tests could start: `df -h` reported the 7.9 GB overlay at 100%, 0 bytes available; inode use was 25%. Docker rejected creation of a new disposable PostgreSQL container with `no space left on device`. No test container was created and the existing `unibos-local-postgres-1` / `unibos-local-redis-1` containers and volumes were left untouched. A later Playwright launch for the seven-width browser matrix also stopped before the browser opened because creation of its temporary directory failed with `ENOSPC`. The isolated database/API/security tests, typecheck, unit tests, build, smoke test, dependency audit, and interactive/responsive browser matrix were therefore not run for this documentation branch. Existing P3/P4 CI results remain evidence only for their exact older application SHAs. Local `git diff --check`, application-source Prettier check, ESLint, and the heuristic secret scanner passed on the current source/docs working tree; Prettier reported formatting differences in `AGENTS.md`, `CONFIDENTIALITY.md`, and this new report. I did not rewrite these files while the filesystem was full. A separate attempt to free the ignored 280 MB Next.js build cache was rejected by the execution tool; no files were deleted.
+
+## 10. Supplemental verification — 2026-11-18
+
+This section supersedes the disk/formatting status above where newer evidence is available. After checking that `apps/website/.next` was ignored, generated, and confined to the P4 worktree, I removed that cache only. It freed 290,543,160 bytes; the overlay now has 151 MB free. The repository, `.git`, staged work, `.env*`, database volumes, screenshots, design references, and the separate dirty menu-catalog worktree were preserved. Docker-backed tests remain unavailable because `/var/run/docker.sock` is absent; this is a daemon-access blocker, not the former ENOSPC failure.
+
+On the unchanged P4 application SHA `f1a23f2951505d9bc03222dcaae527bedf973d6a`, local format, lint, typecheck, unit/API tests (24 total), dependency audit (0 vulnerabilities), and heuristic current-tree secret scan passed. `npm run test:security` and `npm run test:smoke` could not run without Docker/PostgreSQL/Redis. These local results do not attest to later commits; GitHub checks below do.
+
+The previous screenshot/responsive review found `/demo/operations` overflow at 320px. Fix `4d8320d309ca1d1680714796fdf65ba2efc18c53` wraps its header below 360px; that exact commit had Engineering run 35 and Brand Audit run 39 pass, and a READY Preview at `https://unibos-fqjr04don-ruslanjurakulov9-1482.vercel.app/`. A subsequent 84-case check across 12 routes and seven widths found the demo POS `/demo/pos` header still overflowed at 320px. Commit `92b0c71ce6da6f6607819d00152bab26d3c4dc71` fixes that narrow-screen layout. Local Chromium verified that POS route at 320, 390, 700, 768, 1024, 1440 and 1920px with HTTP 200 and no horizontal overflow; the 320px screenshot is `/workspace/work/p4.4-qa/pos-mobile-header-fixed.png`. On this commit, Brand Audit run 40 passed; Engineering run 36 was still in progress and Vercel deployment `dpl_9Dz3foWhKuDsjvnAehoGHoaQ29Ze` was queued at the time of this report. Do not treat the earlier 84-case matrix as passing: it recorded the pre-fix POS overflow and was performed against the previous Preview SHA.
+
+The owner asked to carry out the recommended release-safety steps. An attempt to activate ruleset `27314327` with required checks `verify` and `brand-static` was rejected by GitHub (`403 Resource not accessible by integration`). A read-back confirmed enforcement remains `disabled`; no ruleset change was applied. The connected account can read the ruleset but its API integration cannot update it. The Vercel project settings tool does not expose the Production Branch field, so that setting was not modified. Existing `main` Git-deployment exclusion remains in PR #4 and is not active on `main` until that PR is approved and merged. No PR was merged, and no production deployment was created.
+
+Prettier was run on the release-safety documentation after freeing space; the changed Markdown files pass formatting. The prior blocked disk and formatting observations above are retained as historical context, not as the current status.
 
 ## 8. Exact next approvals and actions
 
