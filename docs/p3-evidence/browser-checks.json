@@ -1,0 +1,59 @@
+{
+  "pageErrors": [],
+  "externalRequests": [],
+  "pages": [
+    {
+      "width": 1440,
+      "height": 1000,
+      "label": "1440",
+      "viewport": 1440,
+      "document": 1440,
+      "h1": "Bitta platforma.\nButun biznesingiz.",
+      "brokenImages": [],
+      "headingFont": "\"Playfair Display\", Georgia, serif"
+    },
+    {
+      "width": 768,
+      "height": 1024,
+      "label": "768",
+      "viewport": 768,
+      "document": 768,
+      "h1": "Bitta platforma.\nButun biznesingiz.",
+      "brokenImages": [],
+      "headingFont": "\"Playfair Display\", Georgia, serif"
+    },
+    {
+      "width": 390,
+      "height": 844,
+      "label": "390",
+      "viewport": 390,
+      "document": 390,
+      "h1": "Bitta platforma.\nButun biznesingiz.",
+      "brokenImages": [],
+      "headingFont": "\"Playfair Display\", Georgia, serif"
+    },
+    {
+      "width": 320,
+      "height": 800,
+      "label": "320",
+      "viewport": 320,
+      "document": 320,
+      "h1": "Bitta platforma.\nButun biznesingiz.",
+      "brokenImages": [],
+      "headingFont": "\"Playfair Display\", Georgia, serif"
+    }
+  ],
+  "apiFallback": {
+    "status": 503,
+    "body": {
+      "status": "unavailable",
+      "message": "Authentication and business API are not connected to this preview."
+    }
+  },
+  "authFormFields": 0,
+  "dashboardHasOrgForm": 0,
+  "mobileMenuExpanded": "true",
+  "guestCart": "Demo savat · 1 taom · $8.50\nSavatni ko‘rish",
+  "dashboardLightBackground": "rgb(242, 244, 239)",
+  "dashboardDarkBackground": "rgb(16, 23, 19)"
+}

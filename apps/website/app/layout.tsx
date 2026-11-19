@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "UniBOS — Engineering foundation",
+  title: "UniBOS — One platform. Your entire business.",
   description:
-    "Local engineering foundation for UniBOS. No live business service is available.",
+    "A unified operating system for growing businesses. Discover the UniBOS platform.",
   robots: { index: false, follow: false },
 };
 
@@ -13,7 +13,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="uz">
       <body>{children}</body>
     </html>
   );
