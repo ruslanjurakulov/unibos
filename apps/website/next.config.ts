@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { resolve } from "node:path";
+import { stagingPreviewHost } from "@unibos/website/staging-preview.ts";
+
+const stagingRequested = process.env.UNIBOS_STAGING_API === "1";
+const embedded = Boolean(stagingPreviewHost(process.env));
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -41,12 +46,39 @@ function configuredApiOrigin(): string | undefined {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Protected files must be fetched through the original authenticated browser request.
+  ...(embedded && {
+    images: { unoptimized: true },
+    skipTrailingSlashRedirect: true,
+  }),
+  outputFileTracingRoot: resolve(__dirname, "../.."),
+  serverExternalPackages: ["@unibos/api"],
+  turbopack: {
+    resolveAlias: embedded
+      ? {}
+      : { "@unibos/api/dist/staging.js": "./staging-disabled.ts" },
+  },
+  webpack(config, { isServer }) {
+    // The ordinary website ships its existing 503 fallback without a Nest dependency.
+    if (embedded && isServer) {
+      // Keep Nest's tsc decorator metadata and Node 24 ESM interop across workspaces.
+      config.externals.unshift({
+        "@unibos/api/dist/staging.js": "commonjs @unibos/api/dist/staging.js",
+      });
+    } else {
+      config.resolve.alias["@unibos/api/dist/staging.js$"] = false;
+    }
+    return config;
+  },
   env: {
     NEXT_PUBLIC_AUTH_CONFIGURED: String(
-      Boolean(configuredApiOrigin()) || !process.env.VERCEL,
+      stagingRequested
+        ? embedded
+        : Boolean(configuredApiOrigin()) || !process.env.VERCEL,
     ),
   },
   async rewrites() {
+    if (stagingRequested) return [];
     const apiOrigin =
       configuredApiOrigin() ??
       (!process.env.VERCEL ? "http://127.0.0.1:3001" : undefined);
