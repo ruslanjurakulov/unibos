@@ -12,7 +12,7 @@ import {
 import {
   identitySettings,
   provisionLocalFixtureIdentity,
-} from "../../packages/security/scripts/staging-identity.mjs";
+} from "../../packages/security/scripts/staging-identity-flow.mjs";
 
 const password = () => randomBytes(32).toString("base64url");
 test("synthetic operator CLI rejects unapproved hosts, roles, aliases and runtime execution", () => {
@@ -149,10 +149,43 @@ test("isolated synthetic signup verifies the canonical token, retries safely and
     await fixture.query(
       `INSERT INTO auth_users(id,name,email,"emailVerified") VALUES('fixture','Unrelated','other@example.invalid',false)`,
     );
-    await assert.rejects(provisionLocalFixtureIdentity(owner), /unrelated/);
+    await assert.rejects(
+      provisionLocalFixtureIdentity(owner),
+      /UNRELATED_IDENTITIES/,
+    );
   } finally {
     await fixture?.end();
     if (created) await admin.query(`DROP DATABASE ${database}`);
     await admin.end();
   }
+});
+
+test("maintenance diagnostics identify the stage without driver messages or connection details", async () => {
+  const { IdentityProvisionError } =
+    await import("../../packages/security/scripts/staging-identity-diagnostic.mjs");
+  const privateDetail = "secret-test-marker";
+  const cases = [
+    [
+      {
+        message:
+          "Connection terminated due to connection timeout " + privateDetail,
+      },
+      "TIMEOUT",
+    ],
+    [
+      { severity: "FATAL", code: "28P01", message: privateDetail },
+      "SQLSTATE_28P01",
+    ],
+    [{ message: "AUTH_ROLE_CAN_CREATE_SCHEMA" }, "AUTH_ROLE_CAN_CREATE_SCHEMA"],
+    [
+      { message: privateDetail, code: "ERR_MODULE_NOT_FOUND" },
+      "ERR_MODULE_NOT_FOUND",
+    ],
+    [{ message: privateDetail, code: privateDetail }, "FAILED"],
+  ];
+  for (const [error, code] of cases)
+    assert.equal(
+      new IdentityProvisionError("connect", error).message,
+      `stage=connect reason=${code}`,
+    );
 });

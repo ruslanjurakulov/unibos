@@ -259,7 +259,9 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
       async () => {
         await admin.query("GRANT SELECT ON organizations TO unibos_auth");
         try {
-          await assert.rejects(createSecurity(securityConfig), /unsafe/);
+          await assert.rejects(createSecurity(securityConfig), {
+            code: "UNIBOS_AUTH_ROLE_REJECTED",
+          });
         } finally {
           await admin.query("REVOKE SELECT ON organizations FROM unibos_auth");
         }
@@ -293,7 +295,9 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
         }
         await admin.query("GRANT SELECT(name) ON organizations TO unibos_auth");
         try {
-          await assert.rejects(createSecurity(securityConfig), /unsafe/);
+          await assert.rejects(createSecurity(securityConfig), {
+            code: "UNIBOS_AUTH_ROLE_REJECTED",
+          });
         } finally {
           await admin.query(
             "REVOKE SELECT(name) ON organizations FROM unibos_auth",

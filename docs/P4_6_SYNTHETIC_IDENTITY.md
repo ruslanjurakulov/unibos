@@ -24,6 +24,10 @@ try {
 
 For the QA identity set the alias to `qa` and use its separate password. A repeated run with the original password preserves a verified account and finishes an interrupted verification. A different password stops the run. Provisioning creates no authenticated browser session, organization, membership, MFA factor or recovery code.
 
+## Maintenance diagnostics
+
+A failure prints a fixed `stage` and `reason`. `dependencies` indicates the checkout or its built packages could not be loaded. Reinstall dependencies and run `npm run build:security` from the repository root. `connect` allows ten seconds for a provider handshake. `role-check` checks the application's required identity role and database permissions. `register` and `verify-token` identify the Better Auth operation. Record only these labels when reporting errors. Provider SQLSTATE `28P01` indicates a credential mismatch and `42501` indicates insufficient privilege. Use the approved restricted identity login for this operation.
+
 ## Browser acceptance
 
 1. Open `/sign-in` on the authenticated staging Preview. Complete its outer admission challenge and sign in with the synthetic address and password.

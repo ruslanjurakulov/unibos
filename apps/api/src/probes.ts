@@ -12,11 +12,14 @@ export interface HealthProbes {
 export class InfrastructureProbes implements HealthProbes {
   private readonly pool: Pool;
 
-  constructor(private readonly config: RuntimeConfig) {
+  constructor(
+    private readonly config: RuntimeConfig,
+    private readonly connectTimeout = 1000,
+  ) {
     this.pool = new Pool({
       connectionString: config.databaseUrl,
       max: 2,
-      connectionTimeoutMillis: 1000,
+      connectionTimeoutMillis: connectTimeout,
       idleTimeoutMillis: 1000,
       query_timeout: 1000,
       statement_timeout: 1000,
@@ -35,7 +38,7 @@ export class InfrastructureProbes implements HealthProbes {
   async redis(): Promise<void> {
     const client = createClient({
       url: this.config.redisUrl,
-      socket: { connectTimeout: 1000, reconnectStrategy: false },
+      socket: { connectTimeout: this.connectTimeout, reconnectStrategy: false },
       disableOfflineQueue: true,
       // Redis AUTH/HELLO/CLIENT initialization pipelines several commands.
       commandsQueueMaxLength: 32,
@@ -51,7 +54,7 @@ export class InfrastructureProbes implements HealthProbes {
         new Promise<never>((_, reject) => {
           timer = setTimeout(
             () => reject(new Error("Readiness timeout")),
-            1500,
+            this.connectTimeout + 500,
           );
         }),
       ]);

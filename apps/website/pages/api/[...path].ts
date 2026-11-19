@@ -4,6 +4,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   admissionHeader,
   gatePassword,
+  requiresStagingAdmission,
   validAdmission,
 } from "../../staging-admission";
 import { requestStagingOrigin } from "../../staging-preview";
@@ -20,6 +21,8 @@ export default async function api(
   response.setHeader("Cache-Control", "no-store");
   const origin = requestStagingOrigin(process.env, request.headers.host);
   if (!origin) {
+    if (requiresStagingAdmission(process.env))
+      console.error("unibos.preview.init.ORIGIN_GUARD");
     return response.status(503).json({
       status: "unavailable",
       message:
@@ -40,7 +43,13 @@ export default async function api(
   delete request.headers.authorization;
   try {
     pending ??= import("@unibos/api/dist/staging.js")
-      .then(({ createPreviewHandler }) => createPreviewHandler(origin))
+      .then(
+        ({ createPreviewHandler }) => createPreviewHandler(origin),
+        () => {
+          console.error("unibos.preview.init.ADAPTER_MODULE");
+          throw new Error("Preview API unavailable");
+        },
+      )
       .catch((error: unknown) => {
         pending = undefined;
         throw error;

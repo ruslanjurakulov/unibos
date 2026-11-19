@@ -58,7 +58,16 @@ test("unavailable role errors never include connection secrets", async () => {
       error.message,
       "Authentication database role unavailable or unsafe",
     );
+    assert.equal(error.code, "UNIBOS_AUTH_DB_UNAVAILABLE");
     assert.ok(!error.message.includes("synthetic-fixture-only"));
     return true;
   });
+});
+
+test("identity pool rejects unbounded checkout deadlines", async () => {
+  for (const n of [0, 1499, 10001, Infinity, NaN, 4000.5])
+    await assert.rejects(
+      createSecurity(config, { connectionTimeoutMillis: n }),
+      /Invalid identity connection timeout/,
+    );
 });

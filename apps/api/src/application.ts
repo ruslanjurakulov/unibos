@@ -11,6 +11,7 @@ import {
   ServiceUnavailableException,
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { ExpressAdapter } from "@nestjs/platform-express";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
   handleSecurityRoute,
@@ -126,7 +127,8 @@ export async function createApplication(
   })
   class ApiModule {}
 
-  const app = await NestFactory.create(ApiModule, {
+  const app = await NestFactory.create(ApiModule, new ExpressAdapter(), {
+    abortOnError: false,
     logger: false,
     bodyParser: false,
   });
