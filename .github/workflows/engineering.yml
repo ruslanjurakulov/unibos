@@ -36,6 +36,8 @@ jobs:
       - run: npm run db:migrate
       - run: npm run test:security
       - run: npm run test:smoke
+      - name: Rehearse isolated PostgreSQL backup and restore
+        run: npm run test:restore
       - name: Stop isolated local services
         if: always()
         run: docker compose down
