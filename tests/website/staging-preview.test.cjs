@@ -141,3 +141,86 @@ test("staging credentials and request admission are distinct and confined to a s
   );
   assert.equal(validAdmission(password, password, "GET", url, time), false);
 });
+
+test("staging proxy challenges HTML, assets and API, preserves session cookies and removes admission credentials", (t) => {
+  const { NextRequest } = require("next/server.js");
+  const { proxy } = require("../../apps/website/proxy.ts");
+  const password = randomBytes(48).toString("base64url");
+  const settings = { ...env, UNIBOS_STAGING_GATE_PASSWORD: password };
+  const previous = Object.fromEntries(
+    Object.keys(settings).map((key) => [key, process.env[key]]),
+  );
+  Object.assign(process.env, settings);
+  t.after(() => {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+  const request = (path, headers = {}) =>
+    new NextRequest(new URL(path, env.AUTH_BASE_URL), {
+      headers: { host: env.VERCEL_BRANCH_URL, ...headers },
+    });
+  const basic = "Basic " + Buffer.from("unibos:" + password).toString("base64");
+  for (const path of [
+    "/",
+    "/brand/mark-light.svg",
+    "/_next/static/chunks/app.js",
+    "/api/auth/get-session",
+  ]) {
+    const anon = proxy(request(path));
+    assert.equal(anon.status, 401);
+    assert.match(anon.headers.get("www-authenticate"), /^Basic /);
+    assert.match(anon.headers.get("cache-control"), /no-store/);
+    assert.equal(
+      proxy(request(path, { authorization: "Basic invalid" })).status,
+      401,
+    );
+    const admitted = proxy(
+      request(path, {
+        authorization: basic,
+        cookie: "session=synthetic",
+        "x-unibos-staging-admission": "invalid",
+      }),
+    );
+    assert.equal(admitted.headers.get("x-middleware-next"), "1");
+    assert.equal(admitted.headers.get("vercel-cdn-cache-control"), "no-store");
+    assert.equal(
+      admitted.headers.get("x-middleware-request-authorization"),
+      null,
+    );
+    assert.equal(
+      admitted.headers.get("x-middleware-request-cookie"),
+      "session=synthetic",
+    );
+    const proof = admitted.headers.get(
+      "x-middleware-request-x-unibos-staging-admission",
+    );
+    if (path.startsWith("/api/"))
+      assert.ok(
+        validAdmission(
+          proof,
+          password,
+          "GET",
+          new URL(path, env.AUTH_BASE_URL),
+        ),
+      );
+    else assert.equal(proof, null);
+  }
+  assert.equal(
+    proxy(
+      request("/", { host: "old.example.vercel.app", authorization: basic }),
+    ).status,
+    404,
+  );
+  assert.equal(
+    proxy(request("/", { "x-forwarded-proto": "http", authorization: basic }))
+      .status,
+    404,
+  );
+  delete process.env.UNIBOS_STAGING_GATE_PASSWORD;
+  assert.equal(proxy(request("/")).status, 503);
+  delete process.env.UNIBOS_STAGING_API;
+  process.env.VERCEL_GIT_COMMIT_REF = "feat/demo";
+  assert.equal(proxy(request("/")).headers.get("x-middleware-next"), "1");
+});
