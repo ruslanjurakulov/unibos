@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "git": {
     "deploymentEnabled": {
-      "main": false
+      "main": false,
+      "qa-p447-vercel-exclusion-20261119": true
     }
   }
 }
