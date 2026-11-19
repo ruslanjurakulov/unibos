@@ -2,6 +2,14 @@
 
 Review date: 2026-11-17 (Asia/Tashkent)
 
+## Current release decision (19 November 2026)
+
+The owner authorized push and merge for the remaining plan. The `main` release still requires the repository controls in the plan. GitHub returned 403 when the integration attempted to activate ruleset `27314327`; a subsequent read showed `disabled`. The proposed rules preserve one approving review, require GitHub Actions jobs `verify` and `brand-static`, and disallow bypasses. No technical approval was recorded by that attempt.
+
+PR #4 commit `59c7d3c17398447c8179e259757c1297b6cd7a89` installs the same `git.deploymentEnabled.main = false` in both the repository and `apps/website` roots. A separate feature branch tested the project-root rule with an enabled, disabled, enabled sequence. Both enabled commits produced Ready Previews (`dpl_7ButT7aRzVDZzJn4Sa3qHyCvPmbq`, `dpl_5zHJ5jjqdS3FerZH9vKkATYyD6Rv`); the disabled commit `c9615d9be73eda02c7ae895f2545cdb566a55e01` produced no deployment in the observation window. Manual production access remains a separate account setting.
+
+Release controls and subsequent development can be integrated through reviewed PRs targeting the P4 feature branch while the `main` rule is pending. At release, verify the current base, CI, approvals and deployment configuration for each PR. The dated records below describe earlier branch tips and service availability.
+
 ## Decision and status
 
 The owner has authorized the UniBOS repository to remain **Public until the product is ready**. This is a temporary, repository-specific development exception recorded in `CONFIDENTIALITY.md`. It ends before production customer onboarding or final commercial launch, whichever comes first. Private conversion remains a separate owner-approved task.
