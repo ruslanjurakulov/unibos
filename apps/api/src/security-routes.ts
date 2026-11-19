@@ -2714,7 +2714,9 @@ export async function handleSecurityRoute(
 
 /** The API connection must never inherit migration/auth privileges or own tables. */
 export async function verifyRestrictedAppPool(pool: Pool): Promise<void> {
-  const result = await pool.query<{ role_name: string; unsafe: boolean }>(`
+  const result = await pool
+    .query<{ role_name: string; unsafe: boolean }>(
+      `
     SELECT current_user AS role_name,
       (r.rolsuper OR r.rolbypassrls OR r.rolcreatedb OR r.rolcreaterole OR r.rolreplication OR r.rolinherit
       OR has_database_privilege(current_user, current_database(), 'CREATE')
@@ -2730,10 +2732,20 @@ export async function verifyRestrictedAppPool(pool: Pool): Promise<void> {
               OR has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
               OR has_any_column_privilege(current_user,c.oid,'UPDATE')))) AS unsafe
     FROM pg_catalog.pg_roles r WHERE r.rolname = current_user
-  `);
+  `,
+    )
+    .catch(() => {
+      throw Object.assign(
+        new Error("Application database role check unavailable"),
+        { code: "UNIBOS_APP_DB_UNAVAILABLE" },
+      );
+    });
   if (
     result.rows[0]?.role_name !== "unibos_app" ||
     result.rows[0].unsafe !== false
   )
-    throw new Error("Restricted application database role required");
+    throw Object.assign(
+      new Error("Restricted application database role required"),
+      { code: "UNIBOS_APP_ROLE_REJECTED" },
+    );
 }

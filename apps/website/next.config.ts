@@ -1,4 +1,9 @@
 import type { NextConfig } from "next";
+import { resolve } from "node:path";
+import { stagingPreviewHost } from "@unibos/website/staging-preview.ts";
+
+const stagingRequested = process.env.UNIBOS_STAGING_API === "1";
+const embedded = Boolean(stagingPreviewHost(process.env));
 
 const contentSecurityPolicy = [
   "default-src 'self'",
@@ -41,12 +46,44 @@ function configuredApiOrigin(): string | undefined {
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Protected files must be fetched through the original authenticated browser request.
+  ...(embedded && {
+    images: { unoptimized: true },
+    skipTrailingSlashRedirect: true,
+  }),
+  outputFileTracingRoot: resolve(__dirname, "../.."),
+  turbopack: {
+    resolveAlias: embedded
+      ? {}
+      : { "../../dist/preview-api.cjs": "./staging-disabled.ts" },
+  },
+  webpack(config, { isServer }) {
+    if (config.cache && typeof config.cache === "object")
+      config.cache.version =
+        (config.cache.version ?? "") +
+        (embedded ? "|embedded-api" : "|ordinary-website");
+    if (embedded && isServer) {
+      // esbuild already bundled the compiled Nest application and its dependencies.
+      // Preserve Node's native built-ins inside the server-only Pages function.
+      const existing = config.module.noParse;
+      config.module.noParse = [
+        ...(existing ? (Array.isArray(existing) ? existing : [existing]) : []),
+        /[/\\]dist[/\\]preview-api\.cjs$/,
+      ];
+    } else {
+      config.resolve.alias["../../dist/preview-api.cjs$"] = false;
+    }
+    return config;
+  },
   env: {
     NEXT_PUBLIC_AUTH_CONFIGURED: String(
-      Boolean(configuredApiOrigin()) || !process.env.VERCEL,
+      stagingRequested
+        ? embedded
+        : Boolean(configuredApiOrigin()) || !process.env.VERCEL,
     ),
   },
   async rewrites() {
+    if (stagingRequested) return [];
     const apiOrigin =
       configuredApiOrigin() ??
       (!process.env.VERCEL ? "http://127.0.0.1:3001" : undefined);

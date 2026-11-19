@@ -20,7 +20,7 @@ COPY --chown=node:node --from=build /srv/unibos/packages ./packages
 COPY --chown=node:node --from=build /srv/unibos/apps/api/dist ./apps/api/dist
 COPY --chown=node:node --from=build /srv/unibos/apps/website/.next ./apps/website/.next
 COPY --chown=node:node --from=build /srv/unibos/apps/website/public ./apps/website/public
-COPY --chown=node:node --from=build /srv/unibos/apps/website/next.config.ts /srv/unibos/apps/website/package.json ./apps/website/
+COPY --chown=node:node --from=build /srv/unibos/apps/website/next.config.ts /srv/unibos/apps/website/staging-preview.ts /srv/unibos/apps/website/package.json ./apps/website/
 COPY --chown=node:node infrastructure/migrate.mjs ./infrastructure/migrate.mjs
 RUN mkdir -p apps/website/.next/cache && chown node:node apps/website/.next/cache
 USER node

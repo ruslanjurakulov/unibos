@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import pg from "pg";
 import { createRuntimeRoles } from "@unibos/database";
+import { verifyStagingBootstrap } from "../packages/database/test/staging-bootstrap-fixture.mjs";
 import { applyMigrations } from "../infrastructure/migrate.mjs";
 
 // The rehearsal accepts a tool directory, never a database URI or existing data directory.
@@ -40,7 +41,7 @@ function stopCluster(data) {
 }
 
 function cleanup() {
-  for (const name of ["source", "target"])
+  for (const name of ["source", "target", "bootstrap"])
     stopCluster(join(root, name, "data"));
   rmSync(root, { recursive: true, force: true });
 }
@@ -161,6 +162,9 @@ async function verifyAccess(admin, connection, roles, organizations) {
 }
 
 try {
+  await withCluster("bootstrap", async (admin, connection, _env, roles) => {
+    await verifyStagingBootstrap(admin, connection, roles);
+  });
   let expectedLedgers;
   const organizations = [];
   const version = command("pg_dump", ["--version"]).trim();

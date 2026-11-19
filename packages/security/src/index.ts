@@ -326,14 +326,67 @@ export function createAuthOptions(
   };
 }
 
+class IdentityRoleViolation extends Error {}
+
+/** Canonical identity-role check for the request runtime and offline staging maintenance. */
+export async function verifyRestrictedIdentityRole(
+  database: Pick<Pool, "query">,
+) {
+  const {
+    rows: [role],
+  } =
+    await database.query(`SELECT rolname, rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, rolinherit, rolreplication,
+      EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE relowner=pg_roles.oid) AS owns_relations,
+      EXISTS(SELECT 1 FROM pg_catalog.pg_namespace WHERE nspowner=pg_roles.oid) AS owns_schemas,
+      EXISTS(SELECT 1 FROM pg_catalog.pg_auth_members WHERE member=pg_roles.oid) AS has_memberships,
+      has_database_privilege(current_user,current_database(),'CREATE') AS can_create_schema,
+      has_schema_privilege(current_user,'public','CREATE') AS can_create_in_public,
+      EXISTS(SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
+        WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
+        AND c.relname NOT IN ('auth_users','auth_sessions','auth_accounts','auth_verifications','auth_two_factors','auth_rate_limits','auth_mfa_sessions')
+        AND (has_table_privilege(current_user,c.oid,'SELECT') OR has_table_privilege(current_user,c.oid,'INSERT')
+          OR has_table_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE')
+          OR has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
+          OR has_any_column_privilege(current_user,c.oid,'UPDATE')))
+      AS has_business_grants FROM pg_catalog.pg_roles WHERE rolname=current_user`);
+  if (!role || role.rolname !== "unibos_auth")
+    throw new IdentityRoleViolation("AUTH_ROLE_UNEXPECTED");
+  const prohibited = [
+    "rolsuper",
+    "rolbypassrls",
+    "rolcreatedb",
+    "rolcreaterole",
+    "rolinherit",
+    "rolreplication",
+    "owns_relations",
+    "owns_schemas",
+    "has_memberships",
+    "can_create_schema",
+    "can_create_in_public",
+    "has_business_grants",
+  ] as const;
+  for (const attribute of prohibited) {
+    if (role[attribute] !== false)
+      throw new IdentityRoleViolation(`AUTH_ROLE_${attribute.toUpperCase()}`);
+  }
+}
+
 export async function createSecurity(
   config: SecurityConfig,
+  options: { connectionTimeoutMillis?: number } = {},
 ): Promise<SecurityInstance> {
   validateSecurityConfig(config);
+  const connectionTimeoutMillis = options.connectionTimeoutMillis ?? 1500;
+  if (
+    !Number.isInteger(connectionTimeoutMillis) ||
+    connectionTimeoutMillis < 1500 ||
+    connectionTimeoutMillis > 10000
+  )
+    throw new Error("Invalid identity connection timeout");
   const pool = new Pool({
     connectionString: config.authDatabaseUrl,
     max: 5,
-    connectionTimeoutMillis: 1500,
+    connectionTimeoutMillis,
     idleTimeoutMillis: 1000,
     statement_timeout: 3000,
     query_timeout: 3500,
@@ -341,38 +394,18 @@ export async function createSecurity(
   });
   pool.on("error", () => undefined);
   try {
-    const role =
-      await pool.query(`SELECT rolname, rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, rolinherit, rolreplication,
-      EXISTS (SELECT 1 FROM pg_catalog.pg_class WHERE relowner=pg_roles.oid)
-      OR EXISTS(SELECT 1 FROM pg_catalog.pg_namespace WHERE nspowner=pg_roles.oid)
-      OR EXISTS(SELECT 1 FROM pg_catalog.pg_auth_members WHERE member=pg_roles.oid)
-      OR has_database_privilege(current_user,current_database(),'CREATE')
-      OR has_schema_privilege(current_user,'public','CREATE')
-      OR EXISTS(SELECT 1 FROM pg_catalog.pg_class c JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace
-        WHERE n.nspname='public' AND c.relkind IN ('r','p','v','m','f')
-        AND c.relname NOT IN ('auth_users','auth_sessions','auth_accounts','auth_verifications','auth_two_factors','auth_rate_limits','auth_mfa_sessions')
-        AND (has_table_privilege(current_user,c.oid,'SELECT') OR has_table_privilege(current_user,c.oid,'INSERT')
-          OR has_table_privilege(current_user,c.oid,'UPDATE') OR has_table_privilege(current_user,c.oid,'DELETE')
-          OR has_any_column_privilege(current_user,c.oid,'SELECT') OR has_any_column_privilege(current_user,c.oid,'INSERT')
-          OR has_any_column_privilege(current_user,c.oid,'UPDATE')))
-      AS owns_relations FROM pg_catalog.pg_roles WHERE rolname=current_user`);
-    const current = role.rows[0];
-    if (
-      !current ||
-      current.rolname !== "unibos_auth" ||
-      current.rolsuper ||
-      current.rolbypassrls ||
-      current.rolcreatedb ||
-      current.rolcreaterole ||
-      current.rolinherit ||
-      current.rolreplication ||
-      current.owns_relations
-    ) {
-      throw new Error("Unsafe authentication database role");
-    }
-  } catch {
+    await verifyRestrictedIdentityRole(pool);
+  } catch (error) {
     await pool.end();
-    throw new Error("Authentication database role unavailable or unsafe");
+    throw Object.assign(
+      new Error("Authentication database role unavailable or unsafe"),
+      {
+        code:
+          error instanceof IdentityRoleViolation
+            ? "UNIBOS_AUTH_ROLE_REJECTED"
+            : "UNIBOS_AUTH_DB_UNAVAILABLE",
+      },
+    );
   }
   const auth = betterAuth(createAuthOptions(config, pool));
   return {
