@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatWorkspaceMoney as money } from "../money";
 import WorkspaceNavigation from "../workspace-navigation";
 import styles from "../shifts/shifts.module.css";
 
@@ -252,39 +253,6 @@ function parseMajor(value: string): string | null {
     BigInt(match[1]!) * 100n +
     BigInt((match[2] ?? "").padEnd(2, "0") || "0")
   ).toString();
-}
-function money(minor: string, currency: string) {
-  const amount = BigInt(minor);
-  const negative = amount < 0n;
-  const absolute = negative ? -amount : amount;
-  const major = absolute / 100n;
-  const fraction = absolute % 100n;
-  const currencyFormatter = new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-  const groupedMajor = new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: 0,
-  }).format(major);
-  const exactFraction = new Intl.NumberFormat(undefined, {
-    minimumIntegerDigits: 2,
-    maximumFractionDigits: 0,
-    useGrouping: false,
-  }).format(fraction);
-  let integerReplaced = false;
-  return currencyFormatter
-    .formatToParts(negative ? -0.01 : 0.01)
-    .map((part) => {
-      if (part.type === "integer" && !integerReplaced) {
-        integerReplaced = true;
-        return groupedMajor;
-      }
-      if (part.type === "fraction") return exactFraction;
-      return part.value;
-    })
-    .join("");
 }
 
 export default function CashPayments() {

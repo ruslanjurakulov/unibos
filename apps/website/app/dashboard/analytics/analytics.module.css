@@ -1,0 +1,215 @@
+.page {
+  --surface: #fff;
+  --base: #f2f5f3;
+  --text: #1f2937;
+  --muted: #53645e;
+  --line: #ced9d3;
+  --accent: #0f3d32;
+  --accent-ink: #fff;
+  background: var(--base);
+  color: var(--text);
+  min-height: 100dvh;
+  padding-left: 248px;
+  font-family: var(--sans, Inter, Arial, sans-serif);
+}
+.page[data-dark="true"] {
+  --surface: #1e2c26;
+  --base: #15211c;
+  --text: #f7f4ec;
+  --muted: #b7c9bd;
+  --line: #465c50;
+  --accent: #d8e3db;
+  --accent-ink: #163c30;
+  color-scheme: dark;
+}
+.content {
+  max-width: 1240px;
+  margin: auto;
+  padding: clamp(18px, 3.5vw, 50px);
+  overflow-wrap: anywhere;
+}
+.heading,
+.reportBar,
+.filters {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.heading {
+  margin-bottom: 24px;
+}
+.content h1,
+.content h2,
+.content h3 {
+  font-family: inherit;
+  letter-spacing: -0.025em;
+  line-height: 1.22;
+  color: var(--text);
+  margin: 0;
+}
+.content h1 {
+  font-size: clamp(26px, 3vw, 42px);
+}
+.content h2 {
+  font-size: clamp(20px, 2vw, 26px);
+}
+.content h3 {
+  font-size: 16px;
+}
+.content p,
+.metrics dt,
+.filters legend,
+.filters label {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.heading p {
+  margin: 0 0 6px;
+}
+.content button,
+.content input {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  min-height: 44px;
+  padding: 8px 14px;
+  max-width: 100%;
+}
+.content button:not(:disabled) {
+  cursor: pointer;
+}
+.content button[aria-pressed="true"],
+.reportBar button:last-child {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+}
+.content :focus-visible {
+  outline: 3px solid #a07d36;
+  outline-offset: 2px;
+}
+.content button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.filters {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  padding: 16px;
+  border-radius: 12px;
+  align-items: flex-end;
+}
+.filters fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+.filters fieldset div,
+.reportBar div {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+.filters legend {
+  padding: 0 0 5px;
+}
+.filters label {
+  display: grid;
+  gap: 5px;
+}
+.reportBar {
+  margin: 12px 0 20px;
+}
+.reportBar p {
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+.reportBar span {
+  font-size: 11px;
+}
+.section {
+  margin: 28px 0;
+}
+.section > p {
+  margin: 6px 0 14px;
+}
+.card,
+.tableBox,
+.notice {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  margin: 8px 0;
+}
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.notice a {
+  color: var(--accent);
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  gap: 16px;
+  margin: 14px 0 0;
+}
+.metrics dd {
+  font-size: clamp(16px, 2vw, 24px);
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--accent);
+  margin: 4px 0 0;
+}
+.tableBox {
+  padding: 0 12px;
+}
+.tableBox table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+.tableBox th,
+.tableBox td {
+  padding: 12px 8px;
+  text-align: start;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  vertical-align: top;
+}
+.tableBox thead th {
+  color: var(--muted);
+}
+.tableBox th:first-child {
+  width: 46%;
+}
+.tableBox tbody tr:last-child > * {
+  border-bottom: 0;
+}
+@media (max-width: 760px) {
+  .page {
+    padding-left: 0;
+  }
+  .content {
+    padding: 18px 12px;
+  }
+  .metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .tableBox th,
+  .tableBox td {
+    font-size: 13px;
+    padding: 10px 4px;
+  }
+}

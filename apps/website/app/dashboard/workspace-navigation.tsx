@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import styles from "./workspace-navigation.module.css";
 
@@ -21,6 +21,13 @@ type Organization = {
 };
 type Response = { organizations?: Organization[] };
 type Language = "uz" | "ru" | "en";
+
+type WorkspaceView = {
+  language: Language;
+  status: "loading" | "ready" | "unavailable" | "denied";
+  organization?: Organization;
+  branch?: Branch;
+};
 
 const roleNames: Record<Language, Record<string, string>> = {
   uz: {
@@ -71,6 +78,7 @@ const copy: Record<Language, Record<string, string>> = {
     kitchen: "Oshxona",
     shifts: "Smenalar",
     payments: "To‘lovlar",
+    analytics: "Analitika",
     loading: "Vakolatlar tekshirilmoqda…",
     unavailable: "Ish joyi API orqali tasdiqlanmadi",
     menu: "Navigatsiya",
@@ -90,6 +98,7 @@ const copy: Record<Language, Record<string, string>> = {
     kitchen: "Кухня",
     shifts: "Смены",
     payments: "Платежи",
+    analytics: "Аналитика",
     loading: "Проверка прав доступа…",
     unavailable: "Рабочее пространство не подтверждено API",
     menu: "Навигация",
@@ -109,6 +118,7 @@ const copy: Record<Language, Record<string, string>> = {
     kitchen: "Kitchen",
     shifts: "Cash shifts",
     payments: "Payments",
+    analytics: "Analytics",
     loading: "Verifying access…",
     unavailable: "Workspace was not verified by the API",
     menu: "Navigation",
@@ -120,6 +130,7 @@ const copy: Record<Language, Record<string, string>> = {
   },
 };
 const linkKey: Record<string, string> = {
+  analytics: "analytics",
   workspace: "dashboard",
   pos: "pos",
   waiter: "waiter",
@@ -131,13 +142,15 @@ const linkKey: Record<string, string> = {
 
 export default function WorkspaceNavigation({
   dark = false,
+  children,
 }: {
   dark?: boolean;
+  children?: (context: WorkspaceView) => ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
-  const [ready, setReady] = useState(false);
+  const [status, setStatus] = useState<WorkspaceView["status"]>("loading");
   const [language, setLanguage] = useState<Language>("uz");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [locked, setLocked] = useState(false);
@@ -163,20 +176,22 @@ export default function WorkspaceNavigation({
             router.replace("/sign-in");
             throw new Error("Session expired");
           }
-          if (!response.ok) throw new Error("Capabilities unavailable");
+          if (!response.ok) throw response.status;
           return (await response.json()) as Response;
         })
         .then((data) => {
-          if (active)
+          if (active) {
+            setStatus("ready");
             setOrganizations(
               Array.isArray(data.organizations) ? data.organizations : [],
             );
+          }
         })
-        .catch(() => {
-          if (active) setOrganizations([]);
-        })
-        .finally(() => {
-          if (active) setReady(true);
+        .catch((error: unknown) => {
+          if (active) {
+            setStatus(error === 403 ? "denied" : "unavailable");
+            setOrganizations([]);
+          }
         });
     load();
     const onLanguage = (event: Event) => {
@@ -324,21 +339,19 @@ export default function WorkspaceNavigation({
     } catch {}
   }
 
-  if (!ready)
+  const content = children?.({ language, status, organization, branch });
+  if (status === "loading" || !organizations.length)
     return (
-      <div className={styles.status} role="status">
-        {t.loading}
-      </div>
-    );
-  if (!organizations.length)
-    return (
-      <div className={styles.status} role="status">
-        {t.unavailable}
-      </div>
+      <>
+        <div className={styles.status} role="status">
+          {status === "loading" ? t.loading : t.unavailable}
+        </div>
+        {content}
+      </>
     );
   const selectedOrganizationId = organization?.id ?? organizations[0]?.id ?? "";
 
-  return (
+  const navigation = (
     <section className={styles.shell} data-dark={dark} aria-label={t.label}>
       <header className={styles.header}>
         <a className={styles.brand} href="/dashboard">
@@ -442,5 +455,11 @@ export default function WorkspaceNavigation({
         ))}
       </nav>
     </section>
+  );
+  return (
+    <>
+      {navigation}
+      {content}
+    </>
   );
 }
