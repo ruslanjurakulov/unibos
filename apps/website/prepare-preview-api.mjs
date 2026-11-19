@@ -1,3 +1,4 @@
+import { mkdirSync, writeFileSync } from "node:fs";
 import { isBuiltin } from "node:module";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -54,4 +55,12 @@ if (stagingPreviewHost(process.env)) {
         throw new Error("Unexpected external dependency in Preview API bundle");
     }
   }
+} else {
+  // Reused monorepo/CI build caches may contain a previous private build.
+  const dist = new URL("./dist/", import.meta.url);
+  mkdirSync(dist, { recursive: true });
+  writeFileSync(
+    new URL("preview-api.cjs", dist),
+    '"use strict"; module.exports = {};\n',
+  );
 }

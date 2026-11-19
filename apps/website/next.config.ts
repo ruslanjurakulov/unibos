@@ -58,6 +58,10 @@ const nextConfig: NextConfig = {
       : { "../../dist/preview-api.cjs": "./staging-disabled.ts" },
   },
   webpack(config, { isServer }) {
+    if (config.cache && typeof config.cache === "object")
+      config.cache.version =
+        (config.cache.version ?? "") +
+        (embedded ? "|embedded-api" : "|ordinary-website");
     if (embedded && isServer) {
       // esbuild already bundled the compiled Nest application and its dependencies.
       // Preserve Node's native built-ins inside the server-only Pages function.
