@@ -17,7 +17,7 @@
     "infra:down": "docker compose down",
     "build": "npm run build:security && npm run build --workspace @unibos/api && npm run build --workspace @unibos/website",
     "typecheck": "npm run build:security && npm run typecheck --workspace @unibos/runtime && npm run typecheck --workspace @unibos/database && npm run typecheck --workspace @unibos/security && npm run typecheck --workspace @unibos/api && npm run typecheck --workspace @unibos/website",
-    "test": "npm run build:security && npm run test --workspace @unibos/runtime && npm run test --workspace @unibos/database && npm run test --workspace @unibos/security && npm run test --workspace @unibos/api",
+    "test": "npm run build:security && npm run test --workspace @unibos/runtime && npm run test --workspace @unibos/database && npm run test --workspace @unibos/security && npm run test --workspace @unibos/api && node --test tests/website/*.test.cjs",
     "test:restore": "npm run build --workspace @unibos/database && node scripts/test-restore.mjs",
     "test:smoke": "node --env-file=.env.runtime scripts/smoke.mjs",
     "lint": "eslint apps packages",
