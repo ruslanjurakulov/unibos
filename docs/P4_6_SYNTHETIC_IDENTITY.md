@@ -1,10 +1,10 @@
 # Synthetic identities for protected staging
 
-The maintenance tool supports `qa@unibos-staging.invalid` for automated QA and `owner@unibos-staging.invalid` for the owner's browser. Give each account its own password and authenticator. The `.invalid` addresses belong to a test mailbox held in process memory. Better Auth creates the password account and verifies its signed mailbox token through the library's normal verification endpoint. This verifies a synthetic mailbox for staging. A human email address requires a real delivery and verification flow.
+The maintenance tool supports `qa@unibos-staging.invalid` for automated QA and `owner@unibos-staging.invalid` for the owner's browser. The hosted restaurant journey additionally uses `qa-cashier@unibos-staging.invalid`, `qa-kitchen@unibos-staging.invalid`, and `qa-waiter@unibos-staging.invalid`. Give each account its own password and authenticator. The `.invalid` addresses belong to a test mailbox held in process memory. Better Auth creates the password account and verifies its signed mailbox token through the library's normal verification endpoint. This verifies a synthetic mailbox for staging. A human email address requires a real delivery and verification flow.
 
 ## Windows maintenance setup
 
-Use the reviewed source revision, Node 24 and npm 11 on the maintenance workstation. Run `npm ci` and `npm run build:security` from the repository root. Prepare the database as documented in [dedicated staging bootstrap](P4_6_NEON_BOOTSTRAP.md). Keep the public staging API in production runtime mode with `AUTH_ALLOW_SIGNUP=false`. Run the maintenance process outside Vercel in a fresh PowerShell session. It checks the approved direct Neon endpoint, the `unibos_staging` database and the restricted `unibos_auth` role. The presence of any other identity outside the two fixed addresses stops provisioning.
+Use the reviewed source revision, Node 24 and npm 11 on the maintenance workstation. Run `npm ci` and `npm run build:security` from the repository root. Prepare the database as documented in [dedicated staging bootstrap](P4_6_NEON_BOOTSTRAP.md). Keep the public staging API in production runtime mode with `AUTH_ALLOW_SIGNUP=false`. Run the maintenance process outside Vercel in a fresh PowerShell session. It checks the approved direct Neon endpoint, the `unibos_staging` database and the restricted `unibos_auth` role. The presence of any other identity outside the five fixed addresses stops provisioning.
 
 Choose the alias, save a unique random 24–128 character password in your password manager, and enter the following values at the prompts. The database URL must use the `unibos_auth` login, the direct endpoint hostname, `/unibos_staging`, and exactly `?sslmode=verify-full`. A maintenance or application database login is rejected.
 
@@ -22,7 +22,7 @@ try {
 }
 ```
 
-For the QA identity set the alias to `qa` and use its separate password. A repeated run with the original password preserves a verified account and finishes an interrupted verification. A different password stops the run. Provisioning creates no authenticated browser session, organization, membership, MFA factor or recovery code.
+Repeat the command for each required QA identity using its alias (`qa`, `qa-cashier`, `qa-kitchen`, or `qa-waiter`) and separate password. A verified QA owner assigns each staff account its role and synthetic branch through the membership API after enrollment. A repeated run with the original password preserves a verified account and finishes an interrupted verification. A different password stops the run. Provisioning creates no authenticated browser session, organization, membership, MFA factor or recovery code.
 
 ## Maintenance diagnostics
 

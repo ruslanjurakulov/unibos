@@ -24,10 +24,23 @@ test("synthetic operator CLI rejects unapproved hosts, roles, aliases and runtim
     UNIBOS_SYNTHETIC_ALIAS: "owner",
     UNIBOS_SYNTHETIC_PASSWORD: password(),
   };
-  assert.equal(identitySettings(env).email, "owner@unibos-staging.invalid");
+  for (const alias of [
+    "owner",
+    "qa",
+    "qa-cashier",
+    "qa-kitchen",
+    "qa-waiter",
+  ]) {
+    assert.equal(
+      identitySettings({ ...env, UNIBOS_SYNTHETIC_ALIAS: alias }).email,
+      `${alias}@unibos-staging.invalid`,
+    );
+  }
   for (const overrides of [
     { UNIBOS_STAGING_NEON_HOST: "ep-different.region.aws.neon.tech" },
     { UNIBOS_SYNTHETIC_ALIAS: "admin@external.org" },
+    { UNIBOS_SYNTHETIC_ALIAS: "admin" },
+    { UNIBOS_SYNTHETIC_ALIAS: "cashier" },
     {
       UNIBOS_STAGING_AUTH_URL: env.UNIBOS_STAGING_AUTH_URL.replace(
         "unibos_auth:",
@@ -83,13 +96,23 @@ test("isolated synthetic signup verifies the canonical token, retries safely and
       password: password(),
     };
     assert.equal(await provisionLocalFixtureIdentity(qa), "verified");
+    for (const alias of ["qa-cashier", "qa-kitchen", "qa-waiter"]) {
+      assert.equal(
+        await provisionLocalFixtureIdentity({
+          ...owner,
+          email: `${alias}@unibos-staging.invalid`,
+          password: password(),
+        }),
+        "verified",
+      );
+    }
     const {
       rows: [facts],
     } = await fixture.query(
       `SELECT (SELECT count(*)::int FROM auth_users WHERE "emailVerified" AND NOT coalesce("twoFactorEnabled",false)) AS verified,(SELECT count(*)::int FROM auth_sessions) AS sessions,(SELECT count(*)::int FROM memberships) AS memberships,(SELECT count(*)::int FROM auth_mfa_sessions) AS assurances`,
     );
     assert.deepEqual(facts, {
-      verified: 2,
+      verified: 5,
       sessions: 0,
       memberships: 0,
       assurances: 0,
