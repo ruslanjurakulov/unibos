@@ -14,7 +14,8 @@ assert.ok(
 const org = "0faab234-9a8a-4b25-89a2-29201c7f8acf";
 const primary = "bb68778e-3698-471b-9b2b-d6845b78d70e";
 const secondary = "db68778e-3698-471b-9b2b-d6845b78d70e";
-const name = '=SUM(1,2) "Lunch"';
+const name = "Lunch set";
+const formulaName = '=SUM(1,2) "Lunch"';
 const locales = {
   uz: "Filial hisoboti",
   ru: "Отчёт филиала",
@@ -37,7 +38,8 @@ async function run() {
     let denied = false,
       offline = false,
       forbidNext = false,
-      empty = false;
+      testCsvName = false,
+      largeTotal = false;
     const requests = [];
     const capabilities = () => ({
       organizations: [
@@ -79,7 +81,7 @@ async function run() {
       requests.push({ branchId, from, to });
       if (offline || forbidNext)
         return route.fulfill({ status: offline ? 503 : 403, json: {} });
-      const isEmpty = empty || branchId === secondary;
+      const isEmpty = branchId === secondary;
       return route.fulfill({
         json: {
           version: 1,
@@ -94,7 +96,9 @@ async function run() {
                   currency: "UZS",
                   orderCount: 3,
                   cancelledCount: 1,
-                  orderTotalMinor: "10200000",
+                  orderTotalMinor: largeTotal
+                    ? "900719925474099312345"
+                    : "10200000",
                   averageOrderMinor: "3400000",
                   settlementCount: 2,
                   settledMinor: "7500000",
@@ -107,7 +111,7 @@ async function run() {
                 {
                   productId: "meal",
                   currency: "UZS",
-                  name,
+                  name: testCsvName ? formulaName : name,
                   quantity: "2",
                   totalMinor: "7500000",
                 },
@@ -155,12 +159,14 @@ async function run() {
     await filter("Month", "2024-02-01", "2024-02-29");
     await filter("Week", "2024-02-26", "2024-03-03");
     await filter("Day", "2024-02-29", "2024-02-29");
+    testCsvName = true;
     const downloadEvent = page.waitForEvent("download");
     const beforeExport = requests.length;
     await page
       .getByRole("button", { name: "Download CSV", exact: true })
       .click();
     const download = await downloadEvent;
+    testCsvName = false;
     assert.equal(
       requests.length,
       beforeExport + 1,
@@ -170,6 +176,31 @@ async function run() {
     const csv = await fs.readFile(await download.path(), "utf8");
     assert.ok(csv.includes(`"'=SUM(1,2) ""Lunch"""`));
     assert.ok(csv.includes('"-1000"'));
+    testCsvName = true;
+    const xmlEvent = page.waitForEvent("download");
+    const beforeXml = requests.length;
+    await page.getByRole("button", { name: "Download Excel (.xml)" }).click();
+    const workbook = await xmlEvent;
+    testCsvName = false;
+    assert.equal(requests.length, beforeXml + 1);
+    assert.match(workbook.suggestedFilename(), /\.xml$/);
+    const workbookXml = await fs.readFile(await workbook.path(), "utf8");
+    const workbookEvidence = await page.evaluate((xml) => {
+      const workbook = new DOMParser().parseFromString(xml, "application/xml");
+      const ns = "urn:schemas-microsoft-com:office:spreadsheet";
+      return {
+        invalid: workbook.getElementsByTagName("parsererror").length,
+        names: Array.from(workbook.getElementsByTagNameNS(ns, "Data"))
+          .filter((node) => node.getAttributeNS(ns, "Type") === "String")
+          .map((node) => node.textContent),
+        formulas: Array.from(
+          workbook.getElementsByTagNameNS(ns, "Cell"),
+        ).filter((node) => node.hasAttributeNS(ns, "Formula")).length,
+      };
+    }, workbookXml);
+    assert.equal(workbookEvidence.invalid, 0);
+    assert.ok(workbookEvidence.names.includes(formulaName));
+    assert.equal(workbookEvidence.formulas, 0);
     for (const width of [320, 390, 768, 1024, 1366, 1440, 1920]) {
       await page.setViewportSize({ width, height: 900 });
       const overflowing = await page.evaluate(
@@ -180,6 +211,22 @@ async function run() {
         false,
         `no horizontal page overflow at ${width}px`,
       );
+      const splitAmounts = await page
+        .locator("dd span, td span")
+        .evaluateAll((nodes) =>
+          nodes
+            .filter((node) => {
+              const range = document.createRange();
+              range.selectNodeContents(node);
+              return range.getClientRects().length > 1;
+            })
+            .map((node) => node.textContent),
+        );
+      assert.deepEqual(
+        splitAmounts,
+        [],
+        `readable monetary values at ${width}px`,
+      );
       if (process.env.UNIBOS_QA_OUT && [390, 1440].includes(width)) {
         await fs.mkdir(process.env.UNIBOS_QA_OUT, { recursive: true });
         await page.screenshot({
@@ -188,6 +235,26 @@ async function run() {
         });
       }
     }
+    largeTotal = true;
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.getByRole("button", { name: "Refresh", exact: true }).click();
+    const exactAmount = page
+      .locator("dd")
+      .filter({ hasText: "9,007,199,254,740,993,123.45" });
+    await exactAmount.waitFor();
+    assert.ok(
+      await exactAmount.evaluate(
+        (node) => node.scrollWidth <= node.clientWidth,
+      ),
+      "even very large totals fit the metric without clipping",
+    );
+    assert.ok(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    largeTotal = false;
+    await page.setViewportSize({ width: 1440, height: 900 });
     await page.getByRole("button", { name: "Dark theme" }).focus();
     await page.keyboard.press("Space");
     assert.equal(
@@ -196,7 +263,9 @@ async function run() {
         .getAttribute("aria-pressed"),
       "true",
     );
-    await page.getByRole("combobox", { name: /^Branch/ }).selectOption(secondary);
+    await page
+      .getByRole("combobox", { name: /^Branch/ })
+      .selectOption(secondary);
     await page
       .getByText("This branch has no records for the selected period.")
       .waitFor();
@@ -236,7 +305,7 @@ async function run() {
     assert.equal(requests.length, prior, "no report request for denied role");
     assert.deepEqual(errors, []);
     console.log(
-      "PASS: owner analytics synthetic browser workflow, UTC calendar filters, CSV authorization and escaping, context change, failure/recovery, UZ/RU/EN, dark mode, keyboard and seven viewports",
+      "PASS: owner analytics synthetic browser workflow, UTC calendar filters, CSV/Excel authorization and escaping, context change, failure/recovery, UZ/RU/EN, dark mode, keyboard and seven viewports",
     );
   } finally {
     await browser.close();

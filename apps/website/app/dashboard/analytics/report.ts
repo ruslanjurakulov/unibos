@@ -63,19 +63,13 @@ function csvCell(value: string | number | null, trustedNumeric = false) {
   return '"' + text.replaceAll('"', '""') + '"';
 }
 
-export function reportCsv(report: Report): string {
-  const rows: string[] = [];
-  function add(values: (string | number | null)[], numeric: number[] = []) {
-    rows.push(
-      values
-        .map((v, i) =>
-          csvCell(
-            v,
-            numeric.includes(i) && /^-?\d+(?:\.\d+)?$/.test(String(v)),
-          ),
-        )
-        .join(","),
-    );
+type Cell = string | number | null;
+type Row = { values: Cell[]; numeric: number[] };
+
+function reportRows(report: Report): Row[] {
+  const rows: Row[] = [];
+  function add(values: Cell[], numeric: number[] = []) {
+    rows.push({ values, numeric });
   }
   add(["organization_id", "branch_id", "from_utc", "to_utc"]);
   add([report.organizationId, report.branchId, report.from, report.to]);
@@ -147,5 +141,50 @@ export function reportCsv(report: Report): string {
   add([]);
   add(["average_preparation_seconds"]);
   add([report.averagePreparationSeconds], [0]);
+  return rows;
+}
+
+function isReportNumber(value: Cell, numeric: number[], index: number) {
+  return numeric.includes(index) && /^-?\d+(?:\.\d+)?$/.test(String(value));
+}
+
+export function reportCsv(report: Report): string {
+  const rows = reportRows(report).map(({ values, numeric }) =>
+    values
+      .map((value, index) =>
+        csvCell(value, isReportNumber(value, numeric, index)),
+      )
+      .join(","),
+  );
   return "\uFEFF" + rows.join("\r\n") + "\r\n";
+}
+
+function xmlText(value: string) {
+  // XML 1.0 forbids most control characters and unpaired UTF-16 surrogates.
+  return value
+    .replace(
+      /[^\u0009\u000A\u000D\u0020-\uD7FF\uE000-\uFFFD\u{10000}-\u{10FFFF}]/gu,
+      "\uFFFD",
+    )
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll("\r", "&#13;");
+}
+
+export function reportSpreadsheetXml(report: Report): string {
+  const rows = reportRows(report).map(({ values, numeric }) => {
+    const cells = values.map((value, index) => {
+      if (value === null) return "<Cell/>";
+      const text = String(value);
+      // Excel rounds numeric cells after 15 digits. Keep longer amounts as exact text.
+      const asNumber =
+        isReportNumber(value, numeric, index) &&
+        text.replace(/[-.]/g, "").length <= 15;
+      return `<Cell><Data ss:Type="${asNumber ? "Number" : "String"}">${xmlText(text)}</Data></Cell>`;
+    });
+    return `<Row>${cells.join("")}</Row>`;
+  });
+  const namespace = "urn:schemas-microsoft-com:office:spreadsheet";
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="${namespace}" xmlns:ss="${namespace}"><Worksheet ss:Name="Analytics"><Table>${rows.join("\n")}</Table></Worksheet></Workbook>`;
 }

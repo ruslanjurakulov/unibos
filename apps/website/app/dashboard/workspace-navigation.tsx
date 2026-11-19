@@ -82,6 +82,7 @@ const copy: Record<Language, Record<string, string>> = {
     loading: "Vakolatlar tekshirilmoqda…",
     unavailable: "Ish joyi API orqali tasdiqlanmadi",
     menu: "Navigatsiya",
+    catalog: "Katalog",
     locked: "Amaliyot yakunlanmaguncha filialni almashtirib bo‘lmaydi",
     role: "Vakolat doirasi",
     organizationRole: "Tashkilot",
@@ -102,6 +103,7 @@ const copy: Record<Language, Record<string, string>> = {
     loading: "Проверка прав доступа…",
     unavailable: "Рабочее пространство не подтверждено API",
     menu: "Навигация",
+    catalog: "Каталог",
     locked: "Нельзя менять филиал до завершения операции",
     role: "Область доступа",
     organizationRole: "Организация",
@@ -122,6 +124,7 @@ const copy: Record<Language, Record<string, string>> = {
     loading: "Verifying access…",
     unavailable: "Workspace was not verified by the API",
     menu: "Navigation",
+    catalog: "Catalog",
     locked: "Resolve the pending operation before switching branches",
     role: "Access scope",
     organizationRole: "Organization",
@@ -137,7 +140,7 @@ const linkKey: Record<string, string> = {
   kitchen: "kitchen",
   shifts: "shifts",
   payments: "payments",
-  menu: "menu",
+  menu: "catalog",
 };
 
 export default function WorkspaceNavigation({

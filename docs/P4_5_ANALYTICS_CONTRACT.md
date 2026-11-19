@@ -30,7 +30,7 @@ Order and ticket status totals reflect their state at the time of the query. A l
 
 ## Export and privacy
 
-The same branch permission and MFA requirement apply to the data available for CSV export. The dashboard requests a fresh report for the selected branch and period when the user downloads a CSV. After the API verifies the session and permission, the browser serializes that response to CSV. Monetary columns use integer minor units. CSV files contain business figures and may include internal cashier identifiers. The API returns no customer identity, credentials, order notes or kitchen preparation notes. A downloaded file remains in the possession of its recipient after the session ends.
+The same branch permission and MFA requirement apply to the data available for both CSV and Excel XML export. The dashboard requests a fresh report for the selected branch and period when the user downloads a report. After the API verifies the session and permission, the browser serializes that response as CSV or an Excel 2003 XML workbook. Monetary columns use integer minor units. CSV files contain business figures and may include internal cashier identifiers. The API returns no customer identity, credentials, order notes or kitchen preparation notes. A downloaded file remains in the possession of its recipient after the session ends.
 
 ## Database compatibility
 

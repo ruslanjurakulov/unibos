@@ -8,6 +8,7 @@ import {
   dateRange,
   isoDate,
   reportCsv,
+  reportSpreadsheetXml,
   type Period,
   type Report,
 } from "./report";
@@ -76,7 +77,7 @@ function Results({ scope, lang }: { scope: Scope; lang: Language }) {
   const [report, setReport] = useState<Report | null>(null);
   const [state, setState] = useState<RequestState>("loading");
   const [refresh, setRefresh] = useState(0);
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "xml" | null>(null);
   const download = useRef<AbortController | null>(null);
   useEffect(() => {
     const controller = new AbortController();
@@ -99,20 +100,32 @@ function Results({ scope, lang }: { scope: Scope; lang: Language }) {
     };
   }, [scope.organizationId, scope.branchId, scope.from, scope.to, refresh]); // scope values identify the report
 
-  async function exportCsv() {
+  async function exportReport(format: "csv" | "xml") {
     if (exporting) return;
     const controller = new AbortController();
     download.current = controller;
-    setExporting(true);
+    setExporting(format);
     try {
       const current = await fetchReport(scope, controller.signal);
       if (controller.signal.aborted) return;
       const url = URL.createObjectURL(
-        new Blob([reportCsv(current)], { type: "text/csv;charset=utf-8" }),
+        new Blob(
+          [
+            format === "xml"
+              ? reportSpreadsheetXml(current)
+              : reportCsv(current),
+          ],
+          {
+            type:
+              format === "xml"
+                ? "application/xml;charset=utf-8"
+                : "text/csv;charset=utf-8",
+          },
+        ),
       );
       const link = document.createElement("a");
       link.href = url;
-      link.download = `unibos-${scope.branchId}-${scope.from}-${scope.to}.csv`;
+      link.download = `unibos-${scope.branchId}-${scope.from}-${scope.to}.${format}`;
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -123,7 +136,7 @@ function Results({ scope, lang }: { scope: Scope; lang: Language }) {
         setState(failure(error));
       }
     } finally {
-      if (!controller.signal.aborted) setExporting(false);
+      if (!controller.signal.aborted) setExporting(null);
     }
   }
 
@@ -136,13 +149,19 @@ function Results({ scope, lang }: { scope: Scope; lang: Language }) {
   if (state !== "ready" || !report)
     return (
       <div className={styles.notice} role="status" aria-live="polite">
-        {t[state === "ready" ? "loading" : state]}
+        {state !== "expired" && t[state === "ready" ? "loading" : state]}
         {state === "unavailable" && <button onClick={reload}>{t.retry}</button>}
         {state === "expired" && <a href="/sign-in">{t.expired}</a>}
       </div>
     );
   const money = (minor: string | null, currency: string) =>
-    minor === null ? "—" : formatWorkspaceMoney(minor, currency, lang);
+    minor === null ? (
+      "—"
+    ) : (
+      <span className={styles.money}>
+        {formatWorkspaceMoney(minor, currency, lang)}
+      </span>
+    );
   const empty =
     !report.currencies.length &&
     !report.products.length &&
@@ -156,12 +175,23 @@ function Results({ scope, lang }: { scope: Scope; lang: Language }) {
           {scope.from} — {scope.to} <span>UTC</span>
         </p>
         <div>
-          <button disabled={exporting} onClick={reload}>
+          <button disabled={Boolean(exporting)} onClick={reload}>
             {t.refresh}
           </button>
-          <button disabled={exporting} onClick={() => void exportCsv()}>
-            {exporting ? t.downloading : t.download}
-          </button>
+          {(["csv", "xml"] as const).map((format) => (
+            <button
+              type="button"
+              key={format}
+              disabled={Boolean(exporting)}
+              onClick={() => void exportReport(format)}
+            >
+              {exporting === format
+                ? t.downloading
+                : format === "csv"
+                  ? t.download
+                  : t.excel}
+            </button>
+          ))}
         </div>
       </div>
       {empty ? (

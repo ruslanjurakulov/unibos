@@ -8,6 +8,10 @@ A cashier with a verified MFA session submitted a pickup order containing two it
 
 The browser suite in `tests/website/p45-owner-analytics.cjs` uses synthetic API fixtures for deterministic dates, branch changes, authorization loss during export, failed reads and recovery. It exercises keyboard input, light and dark themes, Uzbek, Russian and English, and widths from 320 to 1920 pixels. The integrated browser check above used an actual MFA enrollment and PostgreSQL records.
 
+The staging journey test in `tests/security/restaurant-journey.mjs` uses four MFA accounts for one dine-in order. It verifies kitchen preparation, waiter service, a 25,000-minor-unit recorded cash settlement, 5,000 in change, an idempotent retry, a closing shift count of 30,000 with zero variance, and the owner's final report. It also checks the staff permissions at the payment and reporting endpoints.
+
+The CSV and Excel XML unit cases run with `npm test`. The Excel number limit is 15 significant decimal digits. Larger amounts are stored as text to retain their exact value. Numeric exports use minor units and include the currency code.
+
 ## Synthetic workload
 
 On one disposable database the test generated 12,000 orders, lines and kitchen tickets and 48,000 ticket events across two branches and 120 days. The restricted runtime role read a 92-day interval in one branch. All three reads returned 4,550 orders and ready tickets, 11,375,000 UZS minor units and a 180-second average preparation time. End-to-end transaction times in this environment were 953, 1,187 and 819 milliseconds. A separate `EXPLAIN (ANALYZE, BUFFERS)` run took 680 ms and the finishing-event scan filtered 19,450 extra events. This workload used one reader and had no recorded payments. Concurrent reads, larger settlement volumes and service-level objectives still need staging measurements.

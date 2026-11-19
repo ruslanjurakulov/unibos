@@ -160,12 +160,12 @@
 }
 .metrics {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   gap: 16px;
   margin: 14px 0 0;
 }
 .metrics dd {
-  font-size: clamp(16px, 2vw, 24px);
+  font-size: clamp(16px, 1.5vw, 22px);
   font-variant-numeric: tabular-nums;
   font-weight: 650;
   line-height: 1.25;
@@ -192,10 +192,22 @@
   color: var(--muted);
 }
 .tableBox th:first-child {
-  width: 46%;
+  width: 39%;
 }
 .tableBox tbody tr:last-child > * {
   border-bottom: 0;
+}
+.money {
+  display: inline-block;
+  max-width: 100%;
+}
+.tableBox th:nth-child(2) {
+  width: 19%;
+}
+@media (max-width: 480px) {
+  .metrics > div:has(.money) {
+    grid-column: 1 / -1;
+  }
 }
 @media (max-width: 760px) {
   .page {
