@@ -1,0 +1,127 @@
+name: unibos-private-staging
+
+x-app: &app
+  image: unibos-private-staging-app:${STAGE_REVISION:?Use stage.sh}
+  read_only: true
+  init: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  tmpfs: [/tmp]
+
+services:
+  postgres:
+    image: postgres:17.10-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: unibos_stage_admin
+      POSTGRES_DB: unibos_staging
+      POSTGRES_PASSWORD: ${STAGE_PG:?Initialize staging}
+    volumes: [postgres-data:/var/lib/postgresql/data]
+    healthcheck:
+      test:
+        [
+          CMD,
+          pg_isready,
+          -h,
+          127.0.0.1,
+          -U,
+          unibos_stage_admin,
+          -d,
+          unibos_staging,
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  redis:
+    image: redis:8.6.2-alpine
+    restart: unless-stopped
+    environment:
+      REDISCLI_AUTH: ${STAGE_REDIS:?Initialize staging}
+    command:
+      [
+        sh,
+        -ec,
+        'exec redis-server --appendonly yes --requirepass "$$REDISCLI_AUTH"',
+      ]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: [CMD, redis-cli, -e, ping]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+  migrate:
+    <<: *app
+    profiles: [maintenance]
+    network_mode: service:postgres
+    command: [node, infrastructure/migrate.mjs]
+    environment:
+      NODE_ENV: test
+      MIGRATION_DATABASE_URL: postgresql://unibos_stage_admin:${STAGE_PG:?Initialize staging}@127.0.0.1:5432/unibos_staging
+      APP_DATABASE_PASSWORD: ${STAGE_APP:?Initialize staging}
+      AUTH_DATABASE_PASSWORD: ${STAGE_AUTH:?Initialize staging}
+  api:
+    <<: *app
+    restart: unless-stopped
+    # The website shares this network namespace. Only its port is published.
+    ports: ["127.0.0.1:4300:3000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    environment:
+      NODE_ENV: test
+      HOST: 127.0.0.1
+      PORT: "3001"
+      DATABASE_URL: postgresql://unibos_app:${STAGE_APP:?Initialize staging}@postgres:5432/unibos_staging
+      AUTH_DATABASE_URL: postgresql://unibos_auth:${STAGE_AUTH:?Initialize staging}@postgres:5432/unibos_staging
+      REDIS_URL: redis://:${STAGE_REDIS:?Initialize staging}@redis:6379
+      AUTH_ENABLED: "true"
+      AUTH_ALLOW_SIGNUP: ${STAGE_SIGNUP:-false}
+      BETTER_AUTH_SECRET: ${STAGE_SESSION:?Initialize staging}
+      AUTH_BASE_URL: http://127.0.0.1:4300
+      AUTH_TRUSTED_ORIGINS: http://127.0.0.1:4300
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3001/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 30
+  website:
+    <<: *app
+    restart: unless-stopped
+    network_mode: service:api
+    depends_on:
+      api: { condition: service_healthy }
+    tmpfs:
+      [/tmp, "/srv/unibos/apps/website/.next/cache:uid=1000,gid=1000,mode=0700"]
+    working_dir: /srv/unibos/apps/website
+    environment:
+      NODE_ENV: production
+    command:
+      [
+        node,
+        /srv/unibos/node_modules/next/dist/bin/next,
+        start,
+        -H,
+        0.0.0.0,
+        -p,
+        "3000",
+      ]
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 30
+volumes:
+  postgres-data: {}
+  redis-data: {}

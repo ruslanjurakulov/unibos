@@ -1,0 +1,31 @@
+name: Private staging rehearsal
+on:
+  pull_request:
+    paths:
+      - "infrastructure/staging/**"
+      - ".github/workflows/private-staging.yml"
+permissions:
+  contents: read
+jobs:
+  staging:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Initialize and validate isolated configuration
+        run: |
+          infrastructure/staging/stage.sh init-demo
+          infrastructure/staging/stage.sh validate
+      - name: Build and start loopback staging services
+        run: infrastructure/staging/stage.sh start
+      - name: Verify same-origin authentication
+        run: node infrastructure/staging/verify.mjs create "$RUNNER_TEMP/staging-session.json"
+      - name: Replay migrations on the same staging data
+        run: |
+          infrastructure/staging/stage.sh start
+          node infrastructure/staging/verify.mjs resume "$RUNNER_TEMP/staging-session.json"
+      - name: Stop staging services
+        if: always()
+        run: infrastructure/staging/stage.sh stop
