@@ -18,6 +18,7 @@
     "build": "npm run build:security && npm run build --workspace @unibos/api && npm run build --workspace @unibos/website",
     "typecheck": "npm run build:security && npm run typecheck --workspace @unibos/runtime && npm run typecheck --workspace @unibos/database && npm run typecheck --workspace @unibos/security && npm run typecheck --workspace @unibos/api && npm run typecheck --workspace @unibos/website",
     "test": "npm run build:security && npm run test --workspace @unibos/runtime && npm run test --workspace @unibos/database && npm run test --workspace @unibos/security && npm run test --workspace @unibos/api",
+    "test:restore": "npm run build --workspace @unibos/database && node scripts/test-restore.mjs",
     "test:smoke": "node --env-file=.env.runtime scripts/smoke.mjs",
     "lint": "eslint apps packages",
     "format:check": "prettier --check 'apps/**/*.{ts,tsx,json,css}' 'packages/**/*.{ts,json}' 'scripts/*.mjs' 'infrastructure/*.mjs' 'tests/security/*.mjs' package.json tsconfig.base.json eslint.config.mjs compose.yaml .github/workflows/engineering.yml",
