@@ -9,7 +9,7 @@ const copy = {
     demoHub: {
       eyebrow: "MAHSULOT DEMOLARI",
       title: "UniBOS’ni o‘zingiz ko‘ring",
-      lead: "Haqiqiy hisob ochmasdan uchta demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
+      lead: "Haqiqiy hisob ochmasdan yettita demo yo‘nalishni o‘rganing. Buyurtma, to‘lov yoki mijoz ma’lumotlari yuborilmaydi.",
       cards: [
         {
           title: "Restoran boshqaruvi",
@@ -36,6 +36,42 @@ const copy = {
           note: "Bu demo; ishlaydigan platforma-admin API’si yo‘q.",
           href: "/demo/super-admin",
           action: "Namuna interfeys",
+        },
+        {
+          title: "Katalog va stollar",
+          label: "Restoran egasi",
+          description:
+            "Filial mahsulotlari, narxlari, mavjudligi va QR stol boshqaruvi.",
+          note: "Faqat brauzer ichidagi synthetic demo; backendga ulanmagan.",
+          href: "/demo/operations",
+          action: "Katalog demosini ochish",
+        },
+        {
+          title: "Kassir POS",
+          label: "Kassir",
+          description:
+            "Dine-in yoki olib ketish buyurtmasini tuzing va savatni ko‘ring.",
+          note: "Buyurtma faqat shu brauzerdagi sun’iy demo holatida qoladi.",
+          href: "/demo/pos",
+          action: "Kassir demosini ochish",
+        },
+        {
+          title: "Xizmat oqimi",
+          label: "Kassir · Oshxona · Ofitsiant",
+          description:
+            "Bitta sahifada buyurtmani qabul qilish, tayyorlash va xizmat ko‘rsatishni sinang.",
+          note: "Rollar orasidagi demo holati shu sahifa ichida saqlanadi; qurilmalararo sinxronlash yo‘q.",
+          href: "/demo/service",
+          action: "Xizmat oqimini boshlash",
+        },
+        {
+          title: "Kassa va naqd to‘lovlar",
+          label: "Kassir",
+          description:
+            "Smenani oching, demo buyurtmani naqd bilan yoping va qaytimni ko‘ring.",
+          note: "Barcha ma’lumotlar sun’iy va faqat shu sahifada vaqtincha saqlanadi.",
+          href: "/demo/finance",
+          action: "Moliyaviy demoni ochish",
         },
       ],
     },
@@ -282,7 +318,7 @@ const copy = {
     demoHub: {
       eyebrow: "PRODUCT DEMOS",
       title: "Explore UniBOS for yourself",
-      lead: "Explore three demo paths without creating a real account. No order, payment or customer record is sent.",
+      lead: "Explore seven demo paths without creating a real account. No order, payment or customer record is sent.",
       cards: [
         {
           title: "Restaurant operations",
@@ -309,6 +345,41 @@ const copy = {
           note: "This is a UI demo; there is no live platform-admin API.",
           href: "/demo/super-admin",
           action: "Sample interface",
+        },
+        {
+          title: "Catalog and tables",
+          label: "Restaurant owner",
+          description:
+            "Branch products, prices, availability, and QR table controls.",
+          note: "Synthetic browser demo only; no backend connection.",
+          href: "/demo/operations",
+          action: "Open catalog demo",
+        },
+        {
+          title: "Cashier POS",
+          label: "Cashier",
+          description:
+            "Create a dine-in or takeaway order and review its cart.",
+          note: "The order stays in synthetic demo state in this browser only.",
+          href: "/demo/pos",
+          action: "Open cashier demo",
+        },
+        {
+          title: "Service workflow",
+          label: "Cashier · Kitchen · Waiter",
+          description: "Try order intake, preparation and service on one page.",
+          note: "Demo state is shared within this page only; there is no cross-device sync.",
+          href: "/demo/service",
+          action: "Start service workflow",
+        },
+        {
+          title: "Cash and payments",
+          label: "Cashier",
+          description:
+            "Open a shift, settle a synthetic order in cash and review change.",
+          note: "All data is fictional and temporary in this page only.",
+          href: "/demo/finance",
+          action: "Open finance demo",
         },
       ],
     },
@@ -555,7 +626,7 @@ const copy = {
     demoHub: {
       eyebrow: "ДЕМОНСТРАЦИИ ПРОДУКТА",
       title: "Изучите UniBOS самостоятельно",
-      lead: "Откройте три демонстрационных сценария без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
+      lead: "Откройте семь демонстрационных сценариев без создания настоящего аккаунта. Заказы, платежи и данные клиентов не отправляются.",
       cards: [
         {
           title: "Работа ресторана",
@@ -582,6 +653,40 @@ const copy = {
           note: "Это демо интерфейса; действующего API администратора нет.",
           href: "/demo/super-admin",
           action: "Пример интерфейса",
+        },
+        {
+          title: "Каталог и столы",
+          label: "Владелец ресторана",
+          description: "Товары филиала, цены, наличие и QR-столы.",
+          note: "Локальное демонстрационное состояние; без подключения к backend.",
+          href: "/demo/operations",
+          action: "Открыть демо каталога",
+        },
+        {
+          title: "Кассовый POS",
+          label: "Кассир",
+          description: "Создайте заказ в зале или навынос и проверьте корзину.",
+          note: "Заказ останется синтетическими данными только в этом браузере.",
+          href: "/demo/pos",
+          action: "Открыть демо кассы",
+        },
+        {
+          title: "Рабочий процесс ресторана",
+          label: "Кассир · Кухня · Официант",
+          description:
+            "На одной странице попробуйте прием заказа, приготовление и обслуживание.",
+          note: "Состояние демо общее только внутри этой страницы; синхронизации между устройствами нет.",
+          href: "/demo/service",
+          action: "Начать сценарий",
+        },
+        {
+          title: "Касса и наличные платежи",
+          label: "Кассир",
+          description:
+            "Откройте смену, закройте демо-заказ наличными и проверьте сдачу.",
+          note: "Все данные вымышлены и временно хранятся только на этой странице.",
+          href: "/demo/finance",
+          action: "Открыть демо финансов",
         },
       ],
     },

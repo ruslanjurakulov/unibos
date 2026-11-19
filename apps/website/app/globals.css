@@ -1747,6 +1747,14 @@ button:focus-visible {
   background: #f2f4ef;
   color: var(--slate);
 }
+.dashboard-page.workspace-shell-enabled {
+  padding-left: 248px;
+}
+@media (max-width: 760px) {
+  .dashboard-page.workspace-shell-enabled {
+    padding-left: 0;
+  }
+}
 .dashboard-header {
   height: 72px;
   background: #fff;
@@ -2543,6 +2551,12 @@ button:focus-visible {
 .p3-nav a:hover,
 .p3-login:hover {
   color: var(--p3-gold);
+}
+.p3-nav a[aria-current="page"] {
+  color: var(--p3-gold);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 6px;
 }
 .p3-tools {
   flex: 0 0 auto;
@@ -3938,6 +3952,10 @@ button:focus-visible {
     border-bottom: 1px solid #ffffff24;
     font-size: 12px;
   }
+  .p3-mobile-nav a[aria-current="page"] {
+    color: var(--p3-gold);
+    font-weight: 700;
+  }
   .p3-tools {
     gap: 9px;
   }
@@ -4019,6 +4037,10 @@ button:focus-visible {
     padding: 12px 6px;
     border-bottom: 1px solid #ffffff24;
     font-size: 12px;
+  }
+  .p3-mobile-nav a[aria-current="page"] {
+    color: var(--p3-gold);
+    font-weight: 700;
   }
   .p3-home-hero {
     min-height: unset;

@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nestjs",
+  "installCommand": "cd ../.. && npm ci",
+  "buildCommand": "cd ../.. && npm run build:security && npm run build --workspace @unibos/api",
+  "git": {
+    "deploymentEnabled": false
+  }
+}

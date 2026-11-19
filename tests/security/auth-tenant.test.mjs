@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { restaurantJourney } from "./restaurant-journey.mjs";
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { createServer } from "node:net";
 import { once } from "node:events";
+import { createRequire } from "node:module";
 import pg from "pg";
 import { createSecurity } from "@unibos/security";
 import { createApplication } from "../../apps/api/dist/application.js";
@@ -10,6 +12,7 @@ import {
   applyMigrations,
   requireLocalMigrationEnvironment,
 } from "../../infrastructure/migrate.mjs";
+const require = createRequire(import.meta.url);
 
 // RFC6238 test driver only. Production verification remains in Better Auth.
 function totp(uri) {
@@ -123,7 +126,11 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
       appPassword: process.env.APP_DATABASE_PASSWORD,
       authPassword: process.env.AUTH_DATABASE_PASSWORD,
     });
-    const base = `http://127.0.0.1:${await reservePort()}`;
+    const apiPort = process.env.P4_4_5_API_PORT
+      ? Number(process.env.P4_4_5_API_PORT)
+      : await reservePort();
+    assert.ok(Number.isInteger(apiPort) && apiPort > 0 && apiPort < 65536);
+    const base = `http://127.0.0.1:${apiPort}`;
     const securityConfig = {
       secret: randomBytes(48).toString("hex"),
       baseURL: base,
@@ -252,7 +259,9 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
       async () => {
         await admin.query("GRANT SELECT ON organizations TO unibos_auth");
         try {
-          await assert.rejects(createSecurity(securityConfig), /unsafe/);
+          await assert.rejects(createSecurity(securityConfig), {
+            code: "UNIBOS_AUTH_ROLE_REJECTED",
+          });
         } finally {
           await admin.query("REVOKE SELECT ON organizations FROM unibos_auth");
         }
@@ -286,7 +295,9 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
         }
         await admin.query("GRANT SELECT(name) ON organizations TO unibos_auth");
         try {
-          await assert.rejects(createSecurity(securityConfig), /unsafe/);
+          await assert.rejects(createSecurity(securityConfig), {
+            code: "UNIBOS_AUTH_ROLE_REJECTED",
+          });
         } finally {
           await admin.query(
             "REVOKE SELECT(name) ON organizations FROM unibos_auth",
@@ -485,6 +496,203 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
       },
     );
     await t.test(
+      "authenticated owner manages branch catalog through the real API and PostgreSQL",
+      async () => {
+        const categoryResponse = await a.request(
+          `/api/organizations/${orgA}/catalog/categories`,
+          { method: "POST", body: { name: "P4.4.5 Test Drinks" } },
+        );
+        assert.equal(categoryResponse.status, 201);
+        const categoryId = categoryResponse.data.category.id;
+
+        const productResponse = await a.request(
+          `/api/organizations/${orgA}/catalog/products`,
+          {
+            method: "POST",
+            body: {
+              categoryId,
+              name: "Synthetic Tea",
+              description: "Disposable integration fixture",
+              imageKey: null,
+              sortOrder: 0,
+            },
+          },
+        );
+        assert.equal(productResponse.status, 201);
+        const productId = productResponse.data.product.id;
+
+        const pricePath = `/api/organizations/${orgA}/branches/${branchA}/catalog/${productId}/price`;
+        const ownerMemberships = await admin.query(
+          "SELECT role,branch_id FROM public.memberships WHERE organization_id=$1 AND user_id=$2 ORDER BY role",
+          [orgA, userA],
+        );
+        assert.ok(
+          ownerMemberships.rows.some(
+            (membership) =>
+              membership.role === "owner" && membership.branch_id === null,
+          ),
+          JSON.stringify(ownerMemberships.rows),
+        );
+        const branchCatalog = await a.request(
+          `/api/organizations/${orgA}/branches/${branchA}/catalog`,
+        );
+        assert.equal(
+          branchCatalog.status,
+          200,
+          JSON.stringify(branchCatalog.data),
+        );
+        const firstPrice = await a.request(pricePath, {
+          method: "POST",
+          body: {
+            priceMinor: 12500,
+            currencyCode: "UZS",
+            expectedPriceVersionId: null,
+          },
+        });
+        assert.equal(firstPrice.status, 201, JSON.stringify(firstPrice.data));
+        const versionId = firstPrice.data.price.id;
+
+        const stalePrice = await a.request(pricePath, {
+          method: "POST",
+          body: {
+            priceMinor: 15000,
+            currencyCode: "UZS",
+            expectedPriceVersionId: null,
+          },
+        });
+        assert.equal(stalePrice.status, 409);
+
+        const updatedPrice = await a.request(pricePath, {
+          method: "POST",
+          body: {
+            priceMinor: 13000,
+            currencyCode: "UZS",
+            expectedPriceVersionId: versionId,
+          },
+        });
+        assert.equal(updatedPrice.status, 201);
+
+        const availabilityPath = `/api/organizations/${orgA}/branches/${branchA}/catalog/${productId}/availability`;
+        assert.equal(
+          (
+            await a.request(availabilityPath, {
+              method: "PATCH",
+              body: { available: false },
+            })
+          ).status,
+          200,
+        );
+        const catalog = await a.request(
+          `/api/organizations/${orgA}/branches/${branchA}/catalog`,
+        );
+        assert.equal(catalog.status, 200);
+        assert.deepEqual(
+          catalog.data.products.map((product) => ({
+            id: product.id,
+            available: product.available,
+            priceMinor: product.price_minor,
+            currency: product.currency_code,
+          })),
+          [
+            {
+              id: productId,
+              available: false,
+              priceMinor: "13000",
+              currency: "UZS",
+            },
+          ],
+        );
+        const history = await a.request(pricePath);
+        assert.equal(history.status, 200);
+        assert.equal(history.data.priceHistory.length, 2);
+
+        if (process.env.P4_4_5_UI_BASE_URL) {
+          const { chromium } = require("playwright");
+          const uiBase = new URL(process.env.P4_4_5_UI_BASE_URL);
+          assert.ok(["127.0.0.1", "localhost"].includes(uiBase.hostname));
+          const browser = await chromium.launch({
+            headless: true,
+            executablePath: process.env.CHROMIUM_PATH ?? "/usr/bin/chromium",
+            args: ["--no-sandbox"],
+          });
+          try {
+            const context = await browser.newContext({
+              viewport: { width: 1440, height: 1000 },
+            });
+            await context.addCookies(
+              [...a.cookies].map(([name, value]) => ({
+                name,
+                value,
+                domain: uiBase.hostname,
+                path: "/",
+                httpOnly: true,
+                secure: false,
+                sameSite: "Lax",
+              })),
+            );
+            const page = await context.newPage();
+            const response = await page.goto(
+              new URL(
+                `/dashboard/menu?organizationId=${orgA}&branchId=${branchA}`,
+                uiBase,
+              ).href,
+              { waitUntil: "networkidle" },
+            );
+            assert.equal(response?.status(), 200);
+            await page.getByText("Synthetic Tea", { exact: true }).waitFor();
+            assert.ok(
+              await page.getByText("130,00 UZS", { exact: false }).count(),
+              "The authenticated UI should render the database-backed branch price",
+            );
+            await page.screenshot({
+              path: "/workspace/work/p4.4.5-qa/catalog-integrated-authenticated.png",
+              fullPage: true,
+            });
+            await context.close();
+          } finally {
+            await browser.close();
+          }
+        }
+      },
+    );
+    await t.test(
+      "owner analytics checks the verified session, organization, branch and bounded UTC interval",
+      async () => {
+        const path = `/api/v1/organizations/${orgA}/branches/${branchA}/analytics`;
+        const query = "?from=2020-02-29&to=2020-02-29";
+        assert.equal((await anonymous.request(path + query)).status, 401);
+        assert.equal((await b.request(path + query)).status, 403);
+        const authorized = await a.request(path + query);
+        assert.equal(authorized.status, 200);
+        assert.equal(authorized.data.organizationId, orgA);
+        assert.equal(authorized.data.branchId, branchA);
+        assert.deepEqual(authorized.data.currencies, []);
+        assert.equal(
+          (await a.request(path.replace(branchA, branchB) + query)).status,
+          403,
+        );
+        assert.equal(
+          (await a.request(path + query, { method: "POST", body: {} })).status,
+          404,
+        );
+        for (const invalid of [
+          "",
+          "?from=2020-02-29",
+          "?from=2020-02-30&to=2020-03-01",
+          "?from=2020-03-01&to=2020-02-29",
+          "?from=2020-01-01&to=2020-04-02",
+          query + "&role=owner",
+          query + "&from=2020-01-01",
+        ]) {
+          assert.equal((await a.request(path + invalid)).status, 400, invalid);
+        }
+        assert.equal(
+          (await a.request(path + "?from=2020-01-01&to=2020-04-01")).status,
+          200,
+        );
+      },
+    );
+    await t.test(
       "forged tenant, actor, role, origin and malformed identifiers fail closed",
       async () => {
         assert.equal(
@@ -676,6 +884,15 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
           [userA],
         );
         assert.equal((await a.request("/api/me")).data.mfaVerified, false);
+        assert.equal(
+          (
+            await a.request(
+              `/api/v1/organizations/${orgA}/branches/${branchA}/analytics?from=2020-01-01&to=2020-01-01`,
+            )
+          ).status,
+          403,
+        );
+
         assert.equal(
           (
             await a.request(`/api/organizations/${orgA}/branches`, {
@@ -870,6 +1087,19 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
           ).rowCount,
           0,
         );
+      },
+    );
+    await t.test(
+      "MFA restaurant journey from catalog through service and cash settlement to owner analytics",
+      async () => {
+        await restaurantJourney({
+          owner: a,
+          newClient: () => new Client(base),
+          enroll,
+          password,
+          org: orgA,
+          branch: branchA2,
+        });
       },
     );
     assert.deepEqual(idleErrors, []);

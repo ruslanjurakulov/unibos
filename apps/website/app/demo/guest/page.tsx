@@ -19,6 +19,7 @@ const copy = {
     banner:
       "DEMO KO‘RINISHI · Namuna menyu · Buyurtma restoranga yuborilmaydi.",
     demo: "Mehmon demo",
+    demoHub: "Barcha demolar",
     workspace: "Workspace demosi",
     restaurant: "NAMUNA RESTORAN · DEMO",
     menu: "Mavsumiy menyu",
@@ -60,6 +61,7 @@ const copy = {
     banner:
       "DEMO PREVIEW · Sample menu only · No order is sent to a restaurant.",
     demo: "Guest demo",
+    demoHub: "All demos",
     workspace: "Workspace demo",
     restaurant: "SAMPLE RESTAURANT · DEMO",
     menu: "Seasonal menu",
@@ -96,6 +98,7 @@ const copy = {
   ru: {
     banner: "ДЕМО · Пример меню · Заказ не отправляется в ресторан.",
     demo: "Демо для гостей",
+    demoHub: "Все демо",
     workspace: "Демо рабочего пространства",
     restaurant: "ПРИМЕР РЕСТОРАНА · ДЕМО",
     menu: "Сезонное меню",
@@ -134,6 +137,7 @@ const copy = {
   {
     banner: string;
     demo: string;
+    demoHub: string;
     workspace: string;
     restaurant: string;
     menu: string;
@@ -308,7 +312,7 @@ export default function GuestDemoPage() {
     >
       <div className="demo-banner">{t.banner}</div>
       <header className="demo-topbar">
-        <Link className="demo-topbrand" href="/">
+        <Link className="demo-topbrand" href="/demo" aria-label={t.demoHub}>
           <Image
             src="/brand/mark-dark.svg"
             alt=""
@@ -319,6 +323,9 @@ export default function GuestDemoPage() {
           UniBOS <span className="ui-badge">{t.demo}</span>
         </Link>
         <nav className="guest-top-actions">
+          <Link className="demo-toplinks" href="/demo">
+            {t.demoHub}
+          </Link>
           <label className="sr-only" htmlFor="guest-locale">
             {locale === "uz" ? "Til" : locale === "ru" ? "Язык" : "Language"}
           </label>

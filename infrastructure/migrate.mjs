@@ -3,7 +3,11 @@ import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import pg from "pg";
-import { createRuntimeRoles, migrateBusiness } from "@unibos/database";
+import {
+  createRuntimeRoles,
+  migrateBusiness,
+  withMigrationTransaction,
+} from "@unibos/database";
 export async function applyMigrations(admin, passwords) {
   await createRuntimeRoles(admin, passwords);
   for (const [id, file] of [
@@ -19,9 +23,7 @@ async function applyAuthMigration(admin, id, file) {
     "utf8",
   );
   const checksum = createHash("sha256").update(sql).digest("hex");
-  const client = await admin.connect();
-  try {
-    await client.query("BEGIN");
+  await withMigrationTransaction(admin, async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [817624920]);
     await client.query("REVOKE CREATE ON SCHEMA public FROM PUBLIC");
     await client.query(
@@ -44,13 +46,7 @@ async function applyAuthMigration(admin, id, file) {
         [id, checksum],
       );
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 export function requireLocalMigrationEnvironment(env) {
   if (!env.MIGRATION_DATABASE_URL || env.NODE_ENV === "production")

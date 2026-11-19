@@ -1,0 +1,463 @@
+.page {
+  min-height: 100vh;
+  background: #f3f6f4;
+  color: #1f2937;
+  font-family: var(--sans, Inter, Arial, sans-serif);
+  --line: #dfe7e2;
+  --green: #0f3d32;
+  --muted: #6e7b74;
+}
+.withWorkspace {
+  padding-left: 248px;
+}
+.dark {
+  background: #17211d;
+  color: #f7f4ec;
+  --line: #35463d;
+  --muted: #b7c3bb;
+}
+@media (max-width: 760px) {
+  .withWorkspace {
+    padding-left: 0;
+  }
+}
+.header {
+  height: 68px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(16px, 3vw, 40px);
+}
+.dark .header,
+.dark .panel {
+  background: #202e28;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--green);
+  font-weight: 800;
+  text-decoration: none;
+}
+.dark .brand {
+  color: #d8e3db;
+}
+.brand img {
+  width: 30px;
+  height: 30px;
+}
+.brand span {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+}
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.controls label,
+.selects label {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.controls select,
+.selects select,
+.selects button,
+.controls button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 0 9px;
+}
+.wrap {
+  max-width: 1420px;
+  padding: clamp(20px, 4vw, 44px);
+  margin: auto;
+}
+.title,
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+}
+.title h1 {
+  margin: 7px 0;
+  font-size: clamp(26px, 4vw, 38px);
+}
+.title .sub {
+  color: var(--muted);
+  font-size: 13px;
+}
+.eyebrow {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: #8a7548;
+}
+.demoLink {
+  color: var(--green);
+  font-weight: 700;
+  font-size: 12px;
+}
+.dark .demoLink {
+  color: #d8e3db;
+}
+.selects {
+  display: flex;
+  align-items: end;
+  gap: 12px;
+  margin: 20px 0;
+}
+.selects label {
+  flex: 1;
+  max-width: 300px;
+}
+.selects select {
+  display: block;
+  min-width: 160px;
+}
+.alert,
+.error,
+.notice {
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 13px;
+}
+.alert {
+  background: #f8f1e3;
+  color: #5c5138;
+}
+.error {
+  background: #fae4e2;
+  color: #822d25;
+}
+.notice {
+  background: #e3f0e7;
+  color: #24533a;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  gap: 16px;
+}
+.panel {
+  min-width: 0;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 18px;
+  margin: 15px 0;
+}
+.panel h2 {
+  font-size: 16px;
+  margin: 4px 0 13px;
+}
+.order {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 46px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: inherit;
+  padding: 8px 11px;
+  margin-bottom: 7px;
+  text-align: left;
+  cursor: pointer;
+}
+.order small {
+  color: var(--muted);
+}
+.chosen {
+  border-color: var(--green);
+  box-shadow: 0 0 0 1px var(--green);
+}
+.secondaryAction {
+  min-height: 44px;
+  border: 1px solid var(--green);
+  border-radius: 7px;
+  padding: 0 12px;
+  background: transparent;
+  color: var(--green);
+  font-weight: 700;
+  cursor: pointer;
+  margin: 4px 0 12px;
+}
+.dark .secondaryAction {
+  color: #d8e3db;
+  border-color: #d8e3db;
+}
+.secondaryAction:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+.productRow {
+  display: flex;
+  gap: 8px;
+}
+.productRow select {
+  min-width: 0;
+  flex: 1;
+}
+.productRow select,
+.productRow input,
+.productRow button,
+.primary {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 0 10px;
+}
+.catalogControls {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(120px, 0.8fr) 100px;
+  gap: 8px;
+  margin: 8px 0 12px;
+}
+.catalogControls > input,
+.catalogControls select,
+.catalogControls label input {
+  min-width: 0;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  padding: 0 10px;
+}
+.catalogControls label {
+  display: grid;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 9px;
+  max-height: 540px;
+  overflow: auto;
+  padding: 2px;
+}
+.productCard {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  min-height: 170px;
+}
+.productCard:hover,
+.productCard:focus-visible {
+  border-color: var(--green);
+  outline: 2px solid #0f3d3240;
+  outline-offset: 1px;
+}
+.productCard strong {
+  font-size: 12px;
+}
+.productCard small,
+.productCard > span:last-child {
+  font-size: 10px;
+  color: var(--muted);
+}
+.productCard b {
+  font-size: 11px;
+  color: var(--green);
+}
+.dark .productCard b {
+  color: #d8e3db;
+}
+.productImage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 78px;
+  border-radius: 6px;
+  background: #e9efeb;
+  color: #718078;
+  overflow: hidden;
+}
+.productImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.quantityControl {
+  display: flex;
+  gap: 5px;
+}
+.quantityControl button,
+.quantityControl input {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: center;
+}
+.quantityControl input {
+  width: 62px;
+}
+.cartLine > input {
+  min-height: 44px;
+  width: 100%;
+  margin-top: 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  padding: 0 8px;
+}
+.productRow input {
+  width: 70px;
+}
+.productRow button,
+.ticket button,
+.primary {
+  background: var(--green);
+  border-color: var(--green);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+.primary {
+  width: 100%;
+  margin: 8px 0;
+}
+.primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cartLine {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0;
+}
+.cartLine button {
+  border: 0;
+  background: none;
+  color: inherit;
+  font-size: 20px;
+}
+.ticket {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 14px;
+  margin: 10px 0;
+}
+.ticket header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+}
+.ticket header span {
+  font-size: 10px;
+  background: #e8eee9;
+  padding: 5px 8px;
+  border-radius: 20px;
+}
+.ticket ul {
+  padding-left: 20px;
+  line-height: 1.7;
+  font-size: 13px;
+}
+.ticket li small {
+  display: block;
+  color: var(--muted);
+}
+.ticket button {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 7px;
+}
+.empty {
+  padding: 18px;
+  border: 1px dashed var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 13px;
+}
+@media (max-width: 760px) {
+  .wrap {
+    padding: 20px 14px;
+  }
+  .columns {
+    grid-template-columns: 1fr;
+  }
+  .selects {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .selects label {
+    max-width: none;
+  }
+  .productRow {
+    flex-wrap: wrap;
+  }
+  .productRow select {
+    flex-basis: 100%;
+  }
+  .header {
+    padding: 0 12px;
+  }
+}
+@media (max-width: 390px) {
+  .brand span {
+    display: none;
+  }
+  .controls button {
+    font-size: 11px;
+    padding: 0 6px;
+  }
+  .title {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .productRow input {
+    width: 64px;
+  }
+}
+@media (max-width: 520px) {
+  .catalogControls {
+    grid-template-columns: 1fr 84px;
+  }
+  .catalogControls > input {
+    grid-column: 1/-1;
+  }
+  .productGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .page * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

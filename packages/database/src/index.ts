@@ -109,9 +109,35 @@ interface RolePasswords {
   authPassword: string;
 }
 
+/** An existing transaction lets the isolated staging bootstrap commit its grants and schema together. */
+export type MigrationTarget = Pool | { transaction: PoolClient };
+export async function withMigrationTransaction<T>(
+  target: MigrationTarget,
+  apply: (client: PoolClient) => Promise<T>,
+): Promise<T> {
+  if ("transaction" in target) return apply(target.transaction);
+  const client = await target.connect();
+  let discard = false;
+  try {
+    await client.query("BEGIN");
+    const result = await apply(client);
+    await client.query("COMMIT");
+    return result;
+  } catch (error) {
+    try {
+      await client.query("ROLLBACK");
+    } catch {
+      discard = true;
+    }
+    throw error;
+  } finally {
+    client.release(discard);
+  }
+}
+
 /** Explicit local provisioning. Existing role passwords are never silently rotated. */
 export async function createRuntimeRoles(
-  adminPool: Pool,
+  adminPool: MigrationTarget,
   passwords: RolePasswords,
 ): Promise<void> {
   for (const password of [passwords.appPassword, passwords.authPassword]) {
@@ -119,9 +145,7 @@ export async function createRuntimeRoles(
       throw new Error("Runtime role password must be a strong generated value");
     }
   }
-  const client = await adminPool.connect();
-  try {
-    await client.query("BEGIN");
+  await withMigrationTransaction(adminPool, async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [LOCK_ID]);
     for (const [name, login, bypass, password] of [
       ["unibos_app", true, false, passwords.appPassword],
@@ -163,34 +187,33 @@ export async function createRuntimeRoles(
       if (memberships.rowCount)
         throw new Error(`Unexpected role membership for ${name}`);
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
 
 /** Auth schema must already exist. No DDL/admin pool is used by runtime requests. */
-export async function migrateBusiness(adminPool: Pool): Promise<void> {
+export async function migrateBusiness(
+  adminPool: MigrationTarget,
+): Promise<void> {
   for (const [id, file] of [
     ["unibos-business-001", "001-business-security.sql"],
     ["unibos-business-002", "002-audit-permission-details.sql"],
+    ["unibos-business-003", "003-restaurant-catalog-tables.sql"],
+    ["unibos-business-004", "004-unified-orders.sql"],
+    ["unibos-business-005", "005-kitchen-operations.sql"],
+    ["unibos-business-006", "006-cash-shifts.sql"],
+    ["unibos-business-007", "007-cash-payments.sql"],
   ] as const)
     await applyBusinessMigration(adminPool, id, file);
 }
 
 async function applyBusinessMigration(
-  adminPool: Pool,
+  adminPool: MigrationTarget,
   migrationKey: string,
   file: string,
 ): Promise<void> {
   const sql = await readFile(resolve(__dirname, "../migrations", file), "utf8");
   const checksum = createHash("sha256").update(sql).digest("hex");
-  const client = await adminPool.connect();
-  try {
-    await client.query("BEGIN");
+  await withMigrationTransaction(adminPool, async (client) => {
     await client.query("SELECT pg_advisory_xact_lock($1)", [LOCK_ID]);
     await client.query(`CREATE TABLE IF NOT EXISTS public.unibos_business_migrations (
       id text PRIMARY KEY, checksum text NOT NULL, applied_at timestamptz NOT NULL DEFAULT now()
@@ -212,11 +235,5 @@ async function applyBusinessMigration(
         [migrationKey, checksum],
       );
     }
-    await client.query("COMMIT");
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  });
 }
