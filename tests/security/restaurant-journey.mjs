@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
+import { verifyHostedJourneyReplay } from "./hosted-journey-replay.mjs";
 
 // Only the parent test provisions the disposable database. Every action below
 // goes through the running API with the corresponding user's session cookies.
@@ -24,6 +25,7 @@ export async function restaurantJourney({
     );
     return result.data;
   }
+  const userIds = { qa: (await call(owner, "/api/me")).userId };
   async function staff(role) {
     const client = newClient();
     await call(client, "/api/auth/sign-up/email", "POST", {
@@ -34,23 +36,30 @@ export async function restaurantJourney({
     await enroll(client);
     const me = await call(client, "/api/me");
     assert.equal(me.mfaVerified, true);
-    await call(
-      owner,
-      organization + "/memberships",
-      "POST",
-      {
-        userId: me.userId,
-        role,
-        branchId: branch,
-      },
-      201,
-    );
+    userIds[role] = me.userId;
     return client;
   }
 
   const cashier = await staff("cashier");
   const kitchen = await staff("kitchen");
   const waiter = await staff("waiter");
+  await verifyHostedJourneyReplay(
+    { qa: owner, cashier, kitchen, waiter },
+    userIds,
+  );
+  for (const role of ["cashier", "kitchen", "waiter"]) {
+    await call(
+      owner,
+      organization + "/memberships",
+      "POST",
+      {
+        userId: userIds[role],
+        role,
+        branchId: branch,
+      },
+      201,
+    );
+  }
   const { category } = await call(
     owner,
     catalog + "/categories",

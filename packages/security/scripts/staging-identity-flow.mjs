@@ -13,6 +13,9 @@ import { IdentityProvisionError } from "./staging-identity-diagnostic.mjs";
 const aliases = new Map([
   ["owner", "owner@unibos-staging.invalid"],
   ["qa", "qa@unibos-staging.invalid"],
+  ["qa-cashier", "qa-cashier@unibos-staging.invalid"],
+  ["qa-kitchen", "qa-kitchen@unibos-staging.invalid"],
+  ["qa-waiter", "qa-waiter@unibos-staging.invalid"],
 ]);
 const origin = "https://unibos-maintenance.invalid";
 
