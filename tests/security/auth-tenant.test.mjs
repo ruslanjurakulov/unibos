@@ -1102,6 +1102,50 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
         });
       },
     );
+    await t.test(
+      "a lost initial TOTP enrollment response permits password re-entry and verified re-enrollment",
+      async () => {
+        // Start a fresh request window after the preceding HTTP and rate-limit cases.
+        await admin.query('UPDATE auth_rate_limits SET "lastRequest" = 0');
+        const login = (client) =>
+          client.request("/api/auth/sign-in/email", {
+            method: "POST",
+            body: { email: "staff@example.invalid", password },
+          });
+        const abandoned = new Client(base);
+        assert.equal((await login(abandoned)).status, 200);
+        // Discard the committed response and session without retaining a seed or recovery code.
+        assert.equal(
+          (
+            await abandoned.request("/api/auth/two-factor/enable", {
+              method: "POST",
+              body: { password },
+            })
+          ).status,
+          200,
+        );
+        const {
+          rows: [pending],
+        } = await admin.query(
+          `SELECT coalesce(u."twoFactorEnabled", false) AS enabled,
+            EXISTS(SELECT 1 FROM auth_two_factors f WHERE f."userId"=u.id) AS pending
+           FROM auth_users u WHERE u.id=$1`,
+          [userStaff],
+        );
+        assert.deepEqual(pending, { enabled: false, pending: true });
+
+        const fresh = new Client(base);
+        const reentry = await login(fresh);
+        assert.equal(reentry.status, 200);
+        assert.notEqual(reentry.data.twoFactorRedirect, true);
+        assert.equal((await fresh.request("/api/me")).data.mfaVerified, false);
+        await enroll(fresh);
+        assert.equal((await fresh.request("/api/me")).data.mfaVerified, true);
+        const challenge = new Client(base);
+        assert.equal((await login(challenge)).data.twoFactorRedirect, true);
+        assert.equal((await challenge.request("/api/me")).status, 401);
+      },
+    );
     assert.deepEqual(idleErrors, []);
   } catch (error) {
     t.diagnostic(`Failed stage: ${stage}`);
