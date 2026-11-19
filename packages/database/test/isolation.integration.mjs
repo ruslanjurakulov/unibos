@@ -4,6 +4,7 @@ import test from "node:test";
 import { createServer } from "node:http";
 import { once } from "node:events";
 import pg from "pg";
+import { checkOwnerAnalytics } from "./check-owner-analytics.mjs";
 import {
   createRuntimeRoles,
   migrateBusiness,
@@ -661,7 +662,7 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
 
     await t.test(
       "P4.2/P4.3 orders, tickets and waiter additions are transactional and isolated",
-      async () => {
+      async (scenario) => {
         const seed = await withTenantTransaction(
           app,
           "owner_a",
@@ -1615,6 +1616,32 @@ await test("real restricted-role PostgreSQL isolation and audit", async (t) => {
           const paidAtDate = new Date(recordedPaymentResult.payment.created_at)
             .toISOString()
             .slice(0, 10);
+          // Rename the catalog after payment; analytics must retain the submitted snapshot.
+          await withTenantTransaction(app, "owner_a", orgA.id, (client) =>
+            client.query(
+              "UPDATE products SET name='Current soup name' WHERE organization_id=$1 AND id=$2",
+              [orgA.id, seed.product],
+            ),
+          );
+          await scenario.test(
+            "owner analytics reports canonical settlement, shift, KDS and date-scoped amounts",
+            () =>
+              checkOwnerAnalytics({
+                callAs,
+                fixture,
+                orgA: orgA.id,
+                orgB: orgB.id,
+                branchA,
+                branchA2,
+                branchB,
+                winnerUser,
+                productId: seed.product,
+                from: new Date(opened.shift.opened_at)
+                  .toISOString()
+                  .slice(0, 10),
+                to: paidAtDate,
+              }),
+          );
           const filteredHistoryResponse = await callAs(
             "accountant_a",
             `${paymentsPath}?from=${paidAtDate}&to=${paidAtDate}&cashierId=${winnerUser}&shiftId=${recordedPaymentResult.payment.shift_id}&orderId=${pickupResult.order.id}&paymentStatus=RECORDED&page=1&pageSize=1`,

@@ -35,11 +35,14 @@ test("workspace capabilities follow API role policy and remain scoped to supplie
   assert.deepEqual(kitchenCapabilities, ["kitchen.operate", "workspace.view"]);
   const ownerCapabilities = capabilitiesForMemberships(owner);
   assert.ok(ownerCapabilities.includes("branches.manage"));
+  assert.ok(ownerCapabilities.includes("analytics.read"));
+  assert.ok(!cashierCapabilities.includes("analytics.read"));
   assert.ok(ownerCapabilities.includes("kitchen.operate"));
   const directorCapabilities = capabilitiesForMemberships([
     { role: "director", branch_id: null },
   ]);
   assert.ok(directorCapabilities.includes("organizations.manage"));
+  assert.ok(directorCapabilities.includes("analytics.read"));
   const administratorCapabilities = capabilitiesForMemberships([
     { role: "administrator", branch_id: branch },
   ]);
@@ -346,6 +349,10 @@ test("workspace capability endpoint derives scoped memberships from the verified
     const b = body.organizations.find((item) => item.id === orgB);
     assert.ok(b.branches[0].capabilities.includes("kitchen.operate"));
     assert.ok(b.branches[0].navigation.some((item) => item.id === "menu"));
+    assert.equal(
+      b.branches[0].navigation.find((item) => item.id === "analytics")?.href,
+      `/dashboard/analytics?organizationId=${orgB}&branchId=${branchB}`,
+    );
     assert.ok(
       !a.navigation.some((item) => item.id === "menu"),
       "catalog management navigation is not exposed to a cashier",

@@ -651,6 +651,43 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
       },
     );
     await t.test(
+      "owner analytics checks the verified session, organization, branch and bounded UTC interval",
+      async () => {
+        const path = `/api/v1/organizations/${orgA}/branches/${branchA}/analytics`;
+        const query = "?from=2020-02-29&to=2020-02-29";
+        assert.equal((await anonymous.request(path + query)).status, 401);
+        assert.equal((await b.request(path + query)).status, 403);
+        const authorized = await a.request(path + query);
+        assert.equal(authorized.status, 200);
+        assert.equal(authorized.data.organizationId, orgA);
+        assert.equal(authorized.data.branchId, branchA);
+        assert.deepEqual(authorized.data.currencies, []);
+        assert.equal(
+          (await a.request(path.replace(branchA, branchB) + query)).status,
+          403,
+        );
+        assert.equal(
+          (await a.request(path + query, { method: "POST", body: {} })).status,
+          404,
+        );
+        for (const invalid of [
+          "",
+          "?from=2020-02-29",
+          "?from=2020-02-30&to=2020-03-01",
+          "?from=2020-03-01&to=2020-02-29",
+          "?from=2020-01-01&to=2020-04-02",
+          query + "&role=owner",
+          query + "&from=2020-01-01",
+        ]) {
+          assert.equal((await a.request(path + invalid)).status, 400, invalid);
+        }
+        assert.equal(
+          (await a.request(path + "?from=2020-01-01&to=2020-04-01")).status,
+          200,
+        );
+      },
+    );
+    await t.test(
       "forged tenant, actor, role, origin and malformed identifiers fail closed",
       async () => {
         assert.equal(
@@ -842,6 +879,15 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
           [userA],
         );
         assert.equal((await a.request("/api/me")).data.mfaVerified, false);
+        assert.equal(
+          (
+            await a.request(
+              `/api/v1/organizations/${orgA}/branches/${branchA}/analytics?from=2020-01-01&to=2020-01-01`,
+            )
+          ).status,
+          403,
+        );
+
         assert.equal(
           (
             await a.request(`/api/organizations/${orgA}/branches`, {

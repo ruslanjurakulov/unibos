@@ -5,6 +5,7 @@ import type {
   ServerResponse,
 } from "node:http";
 import { Pool, type PoolClient } from "pg";
+import { analyticsDateRange, readBranchAnalytics } from "./branch-analytics";
 import {
   createOrganization,
   withTenantTransaction,
@@ -58,6 +59,7 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
   owner: [
     "workspace.view",
     "organizations.manage",
+    "analytics.read",
     "branches.manage",
     "catalog.read",
     "catalog.manage",
@@ -74,6 +76,7 @@ const workspaceCapabilities: Record<Role, readonly string[]> = {
   director: [
     "workspace.view",
     "organizations.manage",
+    "analytics.read",
     "branches.manage",
     "catalog.read",
     "catalog.manage",
@@ -925,6 +928,14 @@ export async function handleSecurityRoute(
                       },
                     ]
                   : []),
+                ...(capabilities.includes("analytics.read")
+                  ? [
+                      {
+                        href: `/dashboard/analytics?organizationId=${encodeURIComponent(organization.id)}&branchId=${encodeURIComponent(branch.id)}`,
+                        id: "analytics",
+                      },
+                    ]
+                  : []),
                 ...(capabilities.includes("payments.cash_record") ||
                 capabilities.includes("transactions.read")
                   ? [
@@ -977,6 +988,28 @@ export async function handleSecurityRoute(
       json(response, 201, { organization });
       return true;
     }
+  }
+  const analyticsRoute =
+    /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/analytics$/.exec(
+      path,
+    );
+  if (analyticsRoute) {
+    response.setHeader("Cache-Control", "no-store, private");
+    if (request.method !== "GET") throw new ApiAccessError(404);
+    requireMfa(identity);
+    const organizationId = validateUuid(analyticsRoute[1] ?? "");
+    const branchId = validateUuid(analyticsRoute[2] ?? "");
+    const range = analyticsDateRange(requestUrl.searchParams);
+    if (!range) throw new ApiAccessError(400, "INVALID_DATE_RANGE");
+    const report = await withTenantTransaction(
+      options.pool,
+      identity.userId,
+      organizationId,
+      (client) => readBranchAnalytics(client, organizationId, branchId, range),
+    );
+    if (!report) throw new ApiAccessError(403);
+    json(response, 200, report);
+    return true;
   }
   const cashPaymentOrderRoute =
     /^\/api\/v1\/organizations\/([^/]+)\/branches\/([^/]+)\/cash-payments(?:\/orders\/([^/]+))?$/.exec(
