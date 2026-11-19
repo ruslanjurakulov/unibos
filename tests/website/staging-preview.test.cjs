@@ -224,3 +224,31 @@ test("staging proxy challenges HTML, assets and API, preserves session cookies a
   process.env.VERCEL_GIT_COMMIT_REF = "feat/demo";
   assert.equal(proxy(request("/")).headers.get("x-middleware-next"), "1");
 });
+
+test("staging module diagnostics expose only allowlisted codes", () => {
+  const {
+    previewModuleDiagnostic,
+  } = require("../../apps/website/staging-module-diagnostic.ts");
+  const error = Object.assign(new Error("Cannot find module 'pg'"), {
+    code: "MODULE_NOT_FOUND",
+  });
+  assert.equal(
+    previewModuleDiagnostic(error),
+    "unibos.preview.init.ADAPTER_MODULE.PG",
+  );
+  error.message =
+    "Cannot find module 'postgres://private:secret@example.invalid/db'";
+  assert.equal(
+    previewModuleDiagnostic(error),
+    "unibos.preview.init.ADAPTER_MODULE.MISSING",
+  );
+  error.code = "ERR_REQUIRE_ESM";
+  assert.equal(
+    previewModuleDiagnostic(error),
+    "unibos.preview.init.ADAPTER_MODULE.ESM",
+  );
+  assert.equal(
+    previewModuleDiagnostic("sensitive"),
+    "unibos.preview.init.ADAPTER_MODULE",
+  );
+});

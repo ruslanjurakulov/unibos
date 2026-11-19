@@ -7,6 +7,7 @@ import {
   requiresStagingAdmission,
   validAdmission,
 } from "../../staging-admission";
+import { previewModuleDiagnostic } from "../../staging-module-diagnostic";
 import { requestStagingOrigin } from "../../staging-preview";
 
 // Better Auth reads the original HTTP stream. Its own middleware owns the response.
@@ -42,11 +43,11 @@ export default async function api(
   delete request.headers[admissionHeader];
   delete request.headers.authorization;
   try {
-    pending ??= import("@unibos/api/dist/staging.js")
+    pending ??= import(/* webpackMode: "eager" */ "../../dist/preview-api.cjs")
       .then(
         ({ createPreviewHandler }) => createPreviewHandler(origin),
-        () => {
-          console.error("unibos.preview.init.ADAPTER_MODULE");
+        (error: unknown) => {
+          console.error(previewModuleDiagnostic(error));
           throw new Error("Preview API unavailable");
         },
       )

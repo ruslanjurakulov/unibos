@@ -1,4 +1,4 @@
-declare module "@unibos/api/dist/staging.js" {
+declare module "*dist/preview-api.cjs" {
   import type { IncomingMessage, ServerResponse } from "node:http";
   export function createPreviewHandler(
     origin: string,

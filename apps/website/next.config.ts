@@ -52,21 +52,22 @@ const nextConfig: NextConfig = {
     skipTrailingSlashRedirect: true,
   }),
   outputFileTracingRoot: resolve(__dirname, "../.."),
-  serverExternalPackages: ["@unibos/api"],
   turbopack: {
     resolveAlias: embedded
       ? {}
-      : { "@unibos/api/dist/staging.js": "./staging-disabled.ts" },
+      : { "../../dist/preview-api.cjs": "./staging-disabled.ts" },
   },
   webpack(config, { isServer }) {
-    // The ordinary website ships its existing 503 fallback without a Nest dependency.
     if (embedded && isServer) {
-      // Keep Nest's tsc decorator metadata and Node 24 ESM interop across workspaces.
-      config.externals.unshift({
-        "@unibos/api/dist/staging.js": "commonjs @unibos/api/dist/staging.js",
-      });
+      // esbuild already bundled the compiled Nest application and its dependencies.
+      // Preserve Node's native built-ins inside the server-only Pages function.
+      const existing = config.module.noParse;
+      config.module.noParse = [
+        ...(existing ? (Array.isArray(existing) ? existing : [existing]) : []),
+        /[/\\]dist[/\\]preview-api\.cjs$/,
+      ];
     } else {
-      config.resolve.alias["@unibos/api/dist/staging.js$"] = false;
+      config.resolve.alias["../../dist/preview-api.cjs$"] = false;
     }
     return config;
   },
