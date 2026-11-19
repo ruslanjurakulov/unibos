@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { restaurantJourney } from "./restaurant-journey.mjs";
 import { randomUUID, randomBytes, createHmac } from "node:crypto";
 import { createServer } from "node:net";
 import { once } from "node:events";
@@ -1082,6 +1083,19 @@ test("real HTTP identity, MFA, tenant authorization and immediate revocation", a
           ).rowCount,
           0,
         );
+      },
+    );
+    await t.test(
+      "MFA restaurant journey from catalog through service and cash settlement to owner analytics",
+      async () => {
+        await restaurantJourney({
+          owner: a,
+          newClient: () => new Client(base),
+          enroll,
+          password,
+          org: orgA,
+          branch: branchA2,
+        });
       },
     );
     assert.deepEqual(idleErrors, []);
